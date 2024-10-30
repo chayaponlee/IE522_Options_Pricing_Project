@@ -1,0 +1,35 @@
+---
+title: "Q3"
+author: "Chayapon Lee-Isranukul"
+date: "2024-10-30"
+output: pdf_document
+---
+
+\section{Valuing American Options by Simulation: A Simple Least-Squares Approach}
+
+```{r}
+vol1 = 0.5
+vol2 = 0.4
+s01 = 100
+s02 = 150
+q1 = 0
+q2 = 0.03
+t = 1
+r = 0.01
+rho = 0.1
+k = 250
+
+sd1 = vol1 * sqrt(t)
+sd2 = vol2 * sqrt(t)
+mu1 = log(s01) + (r - q1 - 0.5 * sd1**2) * t
+mu2 = log(s02) + (r - q2 - 0.5 * sd2**2) * t
+
+a = exp(mu1 + 0.5 * sd1**2) + exp(mu2 + 0.5 * sd2**2)
+b = exp(2*mu1 + 2*sd1**2) + exp(2*mu2 + 2*sd2**2) + 2*exp(mu1+mu2+0.5*(sd1**2 + sd2**2 + 2*rho*sd1*sd2))
+
+mu = log((a**2)/sqrt(b))
+var = log(b/(a**2))
+
+mu
+var
+```
