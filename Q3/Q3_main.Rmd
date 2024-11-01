@@ -8,28 +8,39 @@ output: pdf_document
 \section{Valuing American Options by Simulation: A Simple Least-Squares Approach}
 
 ```{r}
-vol1 = 0.5
-vol2 = 0.4
-s01 = 100
-s02 = 150
-q1 = 0
-q2 = 0.03
-t = 1
-r = 0.01
-rho = 0.1
-k = 250
+S0 = K = 100
+t = 1/12 
+r = 0.04
+q = 0.02
+sigma = 0.2
 
-sd1 = vol1 * sqrt(t)
-sd2 = vol2 * sqrt(t)
-mu1 = log(s01) + (r - q1 - 0.5 * sd1**2) * t
-mu2 = log(s02) + (r - q2 - 0.5 * sd2**2) * t
-
-a = exp(mu1 + 0.5 * sd1**2) + exp(mu2 + 0.5 * sd2**2)
-b = exp(2*mu1 + 2*sd1**2) + exp(2*mu2 + 2*sd2**2) + 2*exp(mu1+mu2+0.5*(sd1**2 + sd2**2 + 2*rho*sd1*sd2))
-
-mu = log((a**2)/sqrt(b))
-var = log(b/(a**2))
-
-mu
-var
+S0
+K
 ```
+
+```{r}
+m = 10
+# m = c(10,20,30,40,50)
+n = 10
+# n = c(1000,1000*4, 100*4**2, 1000*4**3, 1000*4**4)
+delta_t = t/m
+S_df = data.frame(matrix(ncol = 0, nrow = n))
+S = rep(S0,n)
+S_df[[paste0("S",0)]] = S
+for (i in 1:m) {
+  
+  delta_S =  S * r * delta_t + sigma * S * sqrt(delta_t) * rnorm(n)
+  S = S + delta_S
+  S_df[[paste0("S",i)]] = S
+}
+```
+
+```{r}
+i = m - 1
+
+```
+
+```{r}
+S_df[paste0("S",2)]
+```
+
