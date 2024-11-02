@@ -1,0 +1,150 @@
+---
+title: "Q3"
+author: "Chayapon Lee-Isranukul"
+date: "2024-10-30"
+output: pdf_document
+---
+
+\section{Valuing American Options by Simulation: A Simple Least-Squares Approach}
+
+```{r}
+S0 = K = 100
+t = 1/12 
+r = 0.04
+q = 0.02
+sigma = 0.2
+
+S0
+K
+```
+
+```{r}
+m = 10
+# m = c(10,20,30,40,50)
+n = 10
+# n = c(1000,1000*4, 100*4**2, 1000*4**3, 1000*4**4)
+delta_t = t/m
+
+S_df = data.frame(matrix(ncol = 0, nrow = n))
+S = rep(S0,n)
+#S_df[[paste0("S",0)]] = S
+for (i in 1:m) {
+  
+  delta_S =  S * r * delta_t + sigma * S * sqrt(delta_t) * rnorm(n)
+  S = S + delta_S
+  S_df[[paste0("S",i)]] = S
+}
+
+#write.csv(S_df, file = "S_df.csv", row.names = FALSE)
+```
+
+
+```{r}
+#S_df = read.csv("S_df.csv", header = TRUE)
+exercise_times = rep(m,n)
+payoff_df = data.frame(apply(K - S_df, c(1, 2), function(x) max(x, 0)))
+exercise_times
+payoff_df
+payoff_scaled_df = payoff_df/K
+S_scaled_df = S_df/K
+```
+
+```{r}
+simulate_S_paths <- function(S0,r,q,sigma,n,m,delta_t) {
+  S = rep(S0,n)
+  S_df = data.frame(matrix(ncol = 0, nrow = n))
+  for (i in 1:m) {
+  
+  delta_S =  S * (r-q) * delta_t + sigma * S * sqrt(delta_t) * rnorm(n)
+  S = S + delta_S
+  S_df[[paste0("S",i)]] = S
+  }
+  return(S_df)
+}
+
+laguerre_poly <- function(X, i) {
+  # Ensure X is a vector
+  if (!is.vector(X)) stop("X must be a vector")
+  
+  # Calculate Laguerre polynomial L_i(X)
+  result <- 0
+  for (n in 0:i) {
+    result <- result + ((-1)^n * choose(i, n) * X^n / factorial(n))
+  }
+  
+  return(result * exp(-X / 2))  # Apply exponential decay for the generalized form
+}
+
+monte_carlo <- function(sample) {
+
+    x_bar = sample[1]
+    y_bar = x_bar ** 2
+    
+    for  (i in 2:n) {
+      x = sample[i]
+      x_bar = (1-1/i) * x_bar + (1/i) * x 
+      y_bar = (1-1/i) * y_bar + (1/i) * (x ** 2)
+    }
+    return(list(x_bar = x_bar, y_bar=y_bar))
+}
+
+#LSM_American_put <- function(S, )
+```
+
+
+
+
+
+```{r}
+m = 20
+# m = c(10,20,30,40,50)
+n = 10
+# n = c(1000,1000*4, 100*4**2, 1000*4**3, 1000*4**4)
+delta_t = t/m
+k_regressors = 3
+
+S_df = simulate_S_paths(S0,r,q,sigma,n,m,delta_t) 
+
+exercise_times = rep(m,n)
+payoff_df = data.frame(apply(K - S_df, c(1, 2), function(x) max(x, 0)))
+
+payoff_scaled_df = payoff_df/K
+S_scaled_df = S_df/K
+
+
+for (i in (m-1):1) {
+  itm_idx = payoff_df[,i] > 0
+  future_cashflows = mapply(function(row, col) payoff_df[row, col], row = 1:nrow(payoff_scaled_df), col = exercise_times)[itm_idx]
+  discount_times = delta_t * (exercise_times - i)
+  Y = future_cashflows * exp(-r*discount_times[itm_idx])
+  # X = S_df[,i][itm_idx]
+  S_itm = S_scaled_df[,i][itm_idx]
+  
+  # Laguerre polynomial 
+  X = data.frame(matrix(ncol = 0, nrow = length(S_itm)))
+  for (o_i in 0:(k_regressors-1)) {
+    
+    X[[paste0("L",o_i)]] = laguerre_poly(S_itm, o_i)
+  }
+  
+  model = lm(Y ~ ., data=X)
+  #summary(model)
+  cond_exp_Y = predict(model, newdata = data.frame(X))
+  names(cond_exp_Y) = NULL
+  current_itm_payoff = payoff_scaled_df[,i][itm_idx]
+  exercise_times[itm_idx] = ifelse(current_itm_payoff > cond_exp_Y, i, exercise_times[itm_idx])
+}
+```
+
+```{r}
+payoff_decisions = mapply(function(row, col) payoff_df[row, col], row = 1:nrow(payoff_df), col = exercise_times)
+discount_times = delta_t * (exercise_times - i)
+option_path_values = payoff_decisions * exp(-r*discount_times)
+option_expected_value = mean(option_path_values)
+option_expected_value
+exercise_times
+as.matrix(payoff_df)
+
+```
+
+
