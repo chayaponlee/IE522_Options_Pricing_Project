@@ -1,7 +1,7 @@
 ---
-title: "main"
+title: "Q3_main"
+date: "2024-10-30"
 output: pdf_document
-date: "2024-11-02"
 ---
 
 ```{r}
@@ -77,7 +77,7 @@ LSM_put <- function(S0,K,r,q,sigma,t,n,m, k_regressors) {
 }
 ```
 
-```{r}
+```{r, eval=FALSE}
 S0 = K = 100
 t = 1/12 
 r = 0.04
@@ -102,13 +102,19 @@ for (m in m_list) {
   put_LSM_results[[paste0("value_m",m)]] = value_list
   put_LSM_results[[paste0("se_m",m)]] = se_list
 }
-```
 
-```{r}
 n_names = c()
 for (n in n_list) {n_names = c(n_names, paste0("n",n))}
 rownames(put_LSM_results) <- n_names
-put_LSM_results
 ```
 
+
+```{r, echo=FALSE, eval=FALSE}
+write.csv(put_LSM_results, file = "put_LSM_results_20241101.csv")
+```
+
+```{r, echo=FALSE}
+put_LSM_results = read.csv("put_LSM_results_20241101.csv", header=TRUE, row.names=1)
+put_LSM_results
+```
 
