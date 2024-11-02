@@ -1,5 +1,5 @@
 ---
-title: "main_2"
+title: "main"
 output: pdf_document
 date: "2024-11-02"
 ---
@@ -111,23 +111,4 @@ rownames(put_LSM_results) <- n_names
 put_LSM_results
 ```
 
-```{r}
-m
-```
 
-```{r}
-S0 = K = 100
-t = 1/12 
-r = 0.04
-q = 0.02
-sigma = 0.2
-
-
-m = 10
-n = 100
-k_regressors = 3
-
-option_LSM_res = LSM_put(S0,K,r,q,sigma,t,n,m, k_regressors)
-option_LSM_res$value
-option_LSM_res$se
-```
