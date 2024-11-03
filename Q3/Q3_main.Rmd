@@ -5,7 +5,12 @@ output: pdf_document
 ---
 
 ```{r}
+library(knitr)
+library(kableExtra)
+
 simulate_S_paths <- function(S0,r,q,sigma,n,m,delta_t) {
+  #Function for simulating discrete-time stock paths of m steps with n paths based on the 
+  # BSM risk neutral measure
   S = rep(S0,n)
   S_df = data.frame(matrix(ncol = 0, nrow = n))
   for (i in 1:m) {
@@ -18,6 +23,11 @@ simulate_S_paths <- function(S0,r,q,sigma,n,m,delta_t) {
 }
 
 laguerre_poly <- function(X, i) {
+  # Function to calculate the Laguerre Polynomials. Used for creating regressors
+  # Args: 
+  #   X (vector): Underlying prices 
+  #   i (int): order of the polynomial
+  
   # Ensure X is a vector
   if (!is.vector(X)) stop("X must be a vector")
   
@@ -30,58 +40,7 @@ laguerre_poly <- function(X, i) {
   return(result * exp(-X / 2))  # Apply exponential decay for the generalized form
 }
 
-LSM_put <- function(S0,K,r,q,sigma,t,n,m, k_regressors) {
-
-  delta_t = t/m
-
-  
-  S_df = simulate_S_paths(S0,r,q,sigma,n,m,delta_t) 
-  
-  
-  exercise_times = rep(m,n)
-  payoff_df = data.frame(apply(K - S_df, c(1, 2), function(x) max(x, 0)))
-  
-  payoff_scaled_df = payoff_df
-  S_scaled_df = S_df/K
-  
-  
-  for (i in (m-1):1) {
-    itm_idx = payoff_df[,i] > 0
-    future_cashflows = mapply(function(row, col) payoff_df[row, col], row = 1:nrow(payoff_scaled_df), col = exercise_times)[itm_idx]
-    discount_times = delta_t * (exercise_times - i)
-    Y = future_cashflows * exp(-r*discount_times[itm_idx])
-    # X = S_df[,i][itm_idx]
-    S_itm = S_scaled_df[,i][itm_idx]
-    
-    # Laguerre polynomial 
-    X = data.frame(matrix(ncol = 0, nrow = length(S_itm)))
-    for (o_i in 0:(k_regressors-1)) {
-      
-      X[[paste0("L",o_i)]] = laguerre_poly(S_itm, o_i)
-      # X[[paste0("X",o_i + 1)]] = S_itm**(o_i + 1)
-    }
-    
-    model = lm(Y ~ ., data=X)
-    #summary(model)
-    cond_exp_Y = predict(model, newdata = data.frame(X))
-    names(cond_exp_Y) = NULL
-    current_itm_payoff = payoff_scaled_df[,i][itm_idx]
-    exercise_times[itm_idx] = ifelse(current_itm_payoff > cond_exp_Y, i, exercise_times[itm_idx])
-  }
-  
-  payoff_decisions = mapply(function(row, col) payoff_df[row, col], row = 1:nrow(payoff_df), col = exercise_times)
-  discount_times = delta_t * (exercise_times - i)
-  option_path_values = payoff_decisions * exp(-r*discount_times)
-  option_value = mean(option_path_values)
-  se = sd(option_path_values) / sqrt(n)
-  
-  early_exercise_portion = mean(exercise_times < m)
-  return(list(value = option_value, se=se, early_portion=early_exercise_portion, ee_times=exercise_times))
-
-}
-```
-
-```{r}
+# Closed form BSM solution for European put
 european_put_BS <- function(S,K,r,q,sigma,t) {
   
   d1 = (log(S / K) + (r - q + 0.5 * sigma^2) * t) / (sigma * sqrt(t))
@@ -91,9 +50,66 @@ european_put_BS <- function(S,K,r,q,sigma,t) {
   return(put_price)
 }
 ```
+\newpage
+```{r}
+LSM_put <- function(S0,K,r,q,sigma,t,n,m, k_regressors) {
+  # Function to run the Least-Squares Monte Carlo
+  delta_t = t/m # time steps
+  S_df = simulate_S_paths(S0,r,q,sigma,n,m,delta_t) # simulate stock paths
+  exercise_times = rep(m,n) # intialize stopping times at expiration
+  # create payoff dataframe for all discrete times
+  payoff_df = data.frame(apply(K - S_df, c(1, 2), function(x) max(x, 0)))
+  
+  # scaling underlying stock prices to prevent numerical issues with polynomials
+  S_scaled_df = S_df/K
+  # Recursively loop backwards to apply LSM
+  for (i in (m-1):1) {
+    itm_idx = payoff_df[,i] > 0 # find ITM idx
+    # get future payoffs according to current stopping times
+    future_cashflows = mapply(function(row, col) payoff_df[row, col], row = 1:nrow(payoff_df), col = exercise_times)[itm_idx]
+    # get times to discount according to current stopping times
+    discount_times = delta_t * (exercise_times - i)
+    # define target as present value of future payoffs
+    Y = future_cashflows * exp(-r*discount_times[itm_idx])
+    # filter only ITM underlying stock prices
+    S_itm = S_scaled_df[,i][itm_idx]
+    # Create Laguerre polynomial regressors matrix
+    X = data.frame(matrix(ncol = 0, nrow = length(S_itm)))
+    for (o_i in 0:(k_regressors-1)) {
+      
+      X[[paste0("L",o_i)]] = laguerre_poly(S_itm, o_i)
+      # X[[paste0("X",o_i + 1)]] = S_itm**(o_i + 1)
+    }
+    # Run OLS and calculate conditional expectation of Y|X
+    model = lm(Y ~ ., data=X)
+    cond_exp_Y = predict(model, newdata = data.frame(X))
+    names(cond_exp_Y) = NULL
+    # If current payoff exceeds E[Y|X], then exercise now, if not in the future
+    # To implement this logic, we update our stopping times
+    current_itm_payoff = payoff_df[,i][itm_idx]
+    exercise_times[itm_idx] = ifelse(current_itm_payoff > cond_exp_Y, i, exercise_times[itm_idx])
+  }
+  # get future payoffs according to final stopping times, and discount them
+  payoff_decisions = mapply(function(row, col) payoff_df[row, col], row = 1:nrow(payoff_df), col = exercise_times)
+  discount_times = delta_t * (exercise_times - i)
+  option_path_values = payoff_decisions * exp(-r*discount_times)
+  # option value is the mean of all option present values from each path
+  option_value = mean(option_path_values)
+  se = sd(option_path_values) / sqrt(n)
+  # % of paths that are early exercised
+  early_exercise_portion = mean(exercise_times < m)
+  return(list(value = option_value, se=se, early_portion=early_exercise_portion, ee_times=exercise_times))
+}
+```
 
+\newpage
 
 ```{r, eval=FALSE}
+# main code to run LSM for list of m steps, n paths, and k regressors
+# output two dataframes: option value and se, early exercise value and 
+# % of early exercise paths. 
+# Early exercise value = American (LSM) value - European value 
+set.seed(3)
 S0 = K = 100
 t = 1/12
 r = 0.04
@@ -103,9 +119,7 @@ sigma = 0.2
 european_put_value = european_put_BS(S0,K,r,q,sigma,t)
 
 m_list = c(10,20,30,40,50)
-# m_list = c(10,20)
 n_list = c(1000,1000*4, 1000*4**2, 1000*4**3, 1000*4**4)
-# n_list = c(1000,1000*4)
 k_regressors_list = c(1,2,3)
 
 put_LSM_results = data.frame()
@@ -136,17 +150,14 @@ for (k_regressors in k_regressors_list) {
     temp_results2[[paste0("EE_value_m",m)]] = early_value_list
     temp_results2[[paste0("Pct_EE_m",m)]] = early_portion_list
   }
-  
   n_names = c()
   for (n in n_list) {n_names = c(n_names, paste0("k",k_regressors,",","n",n))}
   rownames(temp_results) = n_names
   rownames(temp_results2) = n_names
-  
   put_LSM_results = rbind(put_LSM_results, temp_results)
   put_LSM_results2 = rbind(put_LSM_results2, temp_results2)
 }
 ```
-
 
 ```{r, echo=FALSE, eval=FALSE}
 write.csv(put_LSM_results, file = "put_LSM_results_20241102.csv")
@@ -158,14 +169,17 @@ put_LSM_results = read.csv("put_LSM_results_20241102.csv", header=TRUE, row.name
 put_LSM_results2 = read.csv("put_LSM_results2_20241102.csv", header=TRUE, row.names=1)
 ```
 
+\newpage
 
-```{r, echo=FALSE}
-library(knitr)
-library(kableExtra)
+```{r,echo=FALSE}
+
 kable(put_LSM_results, "latex", booktabs = TRUE) %>%
-  kable_styling(latex_options = c("scale_down","striped", "hold_position"))
+  kable_styling(latex_options = c("scale_down","striped","hold_position"))
+
+```
+
+```{r,echo=FALSE}
 kable(put_LSM_results2, "latex", booktabs = TRUE) %>%
   kable_styling(latex_options = c("scale_down","striped", "hold_position"))
 ```
-
 
