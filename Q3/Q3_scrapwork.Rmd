@@ -98,7 +98,7 @@ monte_carlo <- function(sample) {
 ```{r}
 m = 20
 # m = c(10,20,30,40,50)
-n = 10
+n = 100
 # n = c(1000,1000*4, 100*4**2, 1000*4**3, 1000*4**4)
 delta_t = t/m
 k_regressors = 3
@@ -147,4 +147,34 @@ as.matrix(payoff_df)
 
 ```
 
+```{r, eval=FALSE, echo=FALSE}
+S0 = K = 100
+t = 1/12
+r = 0.04
+q = 0.02
+sigma = 0.2
+
+m_list = c(10,20,30,40,50)
+# m_list = c(10,20)
+n_list = c(1000,1000*4, 1000*4**2, 1000*4**3, 1000*4**4)
+k_regressors = 3
+
+put_LSM_results = data.frame(matrix(ncol = 0, nrow = length(n_list)))
+
+for (m in m_list) {
+  value_list = c()
+  se_list = c()
+  for (n in n_list) {
+    option_LSM_res = LSM_put(S0,K,r,q,sigma,t,n,m, k_regressors)
+    value_list = c(value_list, option_LSM_res$value)
+    se_list = c(se_list, option_LSM_res$se)
+  }
+  put_LSM_results[[paste0("value_m",m)]] = value_list
+  put_LSM_results[[paste0("se_m",m)]] = se_list
+}
+
+n_names = c()
+for (n in n_list) {n_names = c(n_names, paste0("n",n))}
+rownames(put_LSM_results) <- n_names
+```
 

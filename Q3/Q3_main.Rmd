@@ -37,10 +37,11 @@ LSM_put <- function(S0,K,r,q,sigma,t,n,m, k_regressors) {
   
   S_df = simulate_S_paths(S0,r,q,sigma,n,m,delta_t) 
   
+  
   exercise_times = rep(m,n)
   payoff_df = data.frame(apply(K - S_df, c(1, 2), function(x) max(x, 0)))
   
-  payoff_scaled_df = payoff_df/K
+  payoff_scaled_df = payoff_df
   S_scaled_df = S_df/K
   
   
@@ -57,6 +58,7 @@ LSM_put <- function(S0,K,r,q,sigma,t,n,m, k_regressors) {
     for (o_i in 0:(k_regressors-1)) {
       
       X[[paste0("L",o_i)]] = laguerre_poly(S_itm, o_i)
+      # X[[paste0("X",o_i + 1)]] = S_itm**(o_i + 1)
     }
     
     model = lm(Y ~ ., data=X)
@@ -72,49 +74,98 @@ LSM_put <- function(S0,K,r,q,sigma,t,n,m, k_regressors) {
   option_path_values = payoff_decisions * exp(-r*discount_times)
   option_value = mean(option_path_values)
   se = sd(option_path_values) / sqrt(n)
-  return(list(value = option_value, se=se))
+  
+  early_exercise_portion = mean(exercise_times < m)
+  return(list(value = option_value, se=se, early_portion=early_exercise_portion, ee_times=exercise_times))
 
 }
 ```
 
+```{r}
+european_put_BS <- function(S,K,r,q,sigma,t) {
+  
+  d1 = (log(S / K) + (r - q + 0.5 * sigma^2) * t) / (sigma * sqrt(t))
+  d2 = d1 - sigma * sqrt(t)
+  
+  put_price = K * exp(-r * t) * pnorm(-d2) - S0 * exp(-q * t) * pnorm(-d1)
+  return(put_price)
+}
+```
+
+
 ```{r, eval=FALSE}
 S0 = K = 100
-t = 1/12 
+t = 1/12
 r = 0.04
 q = 0.02
 sigma = 0.2
 
+european_put_value = european_put_BS(S0,K,r,q,sigma,t)
+
 m_list = c(10,20,30,40,50)
 # m_list = c(10,20)
 n_list = c(1000,1000*4, 1000*4**2, 1000*4**3, 1000*4**4)
-k_regressors = 3
+# n_list = c(1000,1000*4)
+k_regressors_list = c(1,2,3)
 
-put_LSM_results = data.frame(matrix(ncol = 0, nrow = length(n_list)))
+put_LSM_results = data.frame()
+put_LSM_results2 = data.frame()
 
-for (m in m_list) {
-  value_list = c()
-  se_list = c()
-  for (n in n_list) {
-    option_LSM_res = LSM_put(S0,K,r,q,sigma,t,n,m, k_regressors)
-    value_list = c(value_list, option_LSM_res$value)
-    se_list = c(se_list, option_LSM_res$se)
+for (k_regressors in k_regressors_list) {
+  temp_results = data.frame(matrix(ncol = 0, nrow = length(n_list)))
+  temp_results2 = data.frame(matrix(ncol = 0, nrow = length(n_list)))
+  
+  for (m in m_list) {
+    value_list = c()
+    se_list = c()
+    
+    early_portion_list = c()
+    early_value_list = c()
+    for (n in n_list) {
+      option_LSM_res = LSM_put(S0,K,r,q,sigma,t,n,m, k_regressors)
+      value_list = c(value_list, option_LSM_res$value)
+      se_list = c(se_list, option_LSM_res$se)
+      
+      early_value_list = c(early_value_list, option_LSM_res$value - european_put_value)
+      early_portion_list = c(early_portion_list, option_LSM_res$early_portion)
+      
+    }
+    temp_results[[paste0("value_m",m)]] = value_list
+    temp_results[[paste0("se_m",m)]] = se_list
+    
+    temp_results2[[paste0("EE_value_m",m)]] = early_value_list
+    temp_results2[[paste0("Pct_EE_m",m)]] = early_portion_list
   }
-  put_LSM_results[[paste0("value_m",m)]] = value_list
-  put_LSM_results[[paste0("se_m",m)]] = se_list
+  
+  n_names = c()
+  for (n in n_list) {n_names = c(n_names, paste0("k",k_regressors,",","n",n))}
+  rownames(temp_results) = n_names
+  rownames(temp_results2) = n_names
+  
+  put_LSM_results = rbind(put_LSM_results, temp_results)
+  put_LSM_results2 = rbind(put_LSM_results2, temp_results2)
 }
-
-n_names = c()
-for (n in n_list) {n_names = c(n_names, paste0("n",n))}
-rownames(put_LSM_results) <- n_names
 ```
 
 
 ```{r, echo=FALSE, eval=FALSE}
-write.csv(put_LSM_results, file = "put_LSM_results_20241101.csv")
+write.csv(put_LSM_results, file = "put_LSM_results_20241102.csv")
+write.csv(put_LSM_results2, file = "put_LSM_results2_20241102.csv")
 ```
 
 ```{r, echo=FALSE}
-put_LSM_results = read.csv("put_LSM_results_20241101.csv", header=TRUE, row.names=1)
-put_LSM_results
+put_LSM_results = read.csv("put_LSM_results_20241102.csv", header=TRUE, row.names=1)
+put_LSM_results2 = read.csv("put_LSM_results2_20241102.csv", header=TRUE, row.names=1)
 ```
+
+
+```{r, echo=FALSE}
+library(knitr)
+library(kableExtra)
+kable(put_LSM_results, "latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("scale_down","striped", "hold_position"))
+kable(put_LSM_results2, "latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("scale_down","striped", "hold_position"))
+```
+
 
