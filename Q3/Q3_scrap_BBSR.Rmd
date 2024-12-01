@@ -1,0 +1,143 @@
+```{r}
+S0 = K = 100
+big_t = 1/12 
+r = 0.04
+q = 0.02
+sigma = 0.2
+
+m = 10
+```
+```{r}
+european_put_BSM <- function(S,K,r,q,sigma,t) {
+  
+  d1 = (log(S / K) + (r - q + 0.5 * sigma^2) * t) / (sigma * sqrt(t))
+  d2 = d1 - sigma * sqrt(t)
+  
+  put_price = K * exp(-r * t) * pnorm(-d2) - S0 * exp(-q * t) * pnorm(-d1)
+  return(put_price)
+}
+```
+
+
+
+```{r}
+
+BBS <- function(S0,r,q,sigma,m,big_t) {
+  dt = big_t/m
+  u = exp(sigma*sqrt(dt))
+  d = 1/u
+  
+  p = (exp((r-q)*dt) - d)/ (u-d)
+  
+  df = exp(-r*dt)
+  
+  
+  S = matrix(rep(0, m*m), m+1, m+1)
+  V = matrix(rep(0, m*m), m+1, m+1)
+  
+  # although m+1 step is not needed, I computed it for sake of completeness, since
+  # at time step m we will use black scholes to compute the option value anyway
+  for (j in 1:(m+1)) {
+    
+    for (i in 1:j) {
+      S[i,j] = S0 * u**(j-i) * d**(i-1)
+      
+    }
+  }
+  # discard option value at time step m+1, only possible for BBSR
+  for (j in (m):1) {
+  
+    for (i in 1:j) {
+      if (j == m) {
+        v_continuation = european_put_BSM(S[i,j], K, r, q, sigma, dt)
+  
+        V[i, j] = max(v_continuation, max(K - S[i,j], 0))
+        
+      }
+      
+      else {
+        
+        v_continuation = df * (p* V[i,j+1] + (1-p) *V[i+1,j+1])
+  
+        V[i,j] = max(v_continuation, max(K - S[i,j], 0))
+      }
+      
+    }
+    
+    
+  }
+  return(V[1,1])
+}
+
+richardson_extrap <- function(S0,r,q,sigma,big_t,m_list) {
+  
+  if (length(m_list) < 2) {stop("len of m_list must > 1")}
+  
+  V = BBS(S0, r, q, sigma, m_list[1], big_t) 
+  
+  for (i in 2:length(m_list)) {
+    
+    V1 = BBS(S0, r, q, sigma, m_list[i], big_t) 
+    step_ratio = m_list[i]/m_list[i-1]
+    V = (step_ratio**2 * V1 - V)/(step_ratio**2 - 1)
+    
+  }
+  return(V)
+}
+
+m_list = c(5,10,20,40,80, 160)
+# m_list = c(10,20)
+
+richardson_extrap(S0,r,q,sigma,big_t,m_list)
+```
+```{r}
+BinomTree <- function(S0,r,q,sigma,m,big_t) {
+  dt = big_t/m
+  u = exp(sigma*sqrt(dt))
+  d = 1/u
+  
+  p = (exp((r-q)*dt) - d)/ (u-d)
+  
+  df = exp(-r*dt)
+  
+  
+  S = matrix(0, nrow=m+1, ncol=m+1)
+  V = matrix(0, nrow=m+1, ncol=m+1)
+  
+  for (j in 1:(m+1)) {
+    
+    for (i in 1:j) {
+      S[i,j] = S0 * u**(j-i) * d**(i-1)
+      
+    }
+  }
+  # discard option value at time step m+1, only
+  for (j in (m):1) {
+  
+    for (i in 1:j) {
+      if (j == m) {
+        v_continuation = df * (p*  max(K - S[i,j+1], 0) + (1-p) * max(K - S[i,j+1], 0))
+  
+        V[i, j] = max(v_continuation, max(K - S[i,j], 0))
+        
+      }
+      
+      else {
+        
+        v_continuation = df * (p* V[i,j+1] + (1-p) *V[i+1,j+1])
+  
+        V[i,j] = max(v_continuation, max(K - S[i,j], 0))
+      }
+      
+    }
+    
+    
+  }
+  return(V[1,1])
+}
+m=15000
+BinomTree(S0,r,q,sigma,m,big_t)
+```
+
+
+

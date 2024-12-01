@@ -49,65 +49,117 @@ payoff_scaled_df = payoff_df/K
 S_scaled_df = S_df/K
 ```
 
+
 ```{r}
 simulate_S_paths <- function(S0,r,q,sigma,n,m,delta_t) {
+  set.seed(3)
+  S = rep(S0,n)
+  S_mat = matrix(0, nrow = n, ncol = m)
+  for (i in 1:m) {
+    # + antithetic paths
+    z_temp = rnorm(n/2)
+    z = c(z_temp, -z_temp)
+    delta_S =  S * (r-q) * delta_t + sigma * S * sqrt(delta_t) * z
+    S = S + delta_S
+    S_mat[,i] = S
+  }
+  return(S_mat)
+}
+
+simulate_S_paths0 <- function(S0,r,q,sigma,n,m,delta_t) {
+  #Function for simulating discrete-time stock paths of m steps with n paths based on the 
+  # BSM risk neutral measure
+  set.seed(3)
   S = rep(S0,n)
   S_df = data.frame(matrix(ncol = 0, nrow = n))
   for (i in 1:m) {
-  
-  delta_S =  S * (r-q) * delta_t + sigma * S * sqrt(delta_t) * rnorm(n)
-  S = S + delta_S
-  S_df[[paste0("S",i)]] = S
+    # + antithetic paths
+    z_temp = rnorm(n/2)
+    z = c(z_temp, -z_temp)
+    delta_S =  S * (r-q) * delta_t + sigma * S * sqrt(delta_t) * z
+    S = S + delta_S
+    S_df[[paste0("S",i)]] = S
   }
   return(S_df)
 }
 
-laguerre_poly <- function(X, i) {
-  # Ensure X is a vector
-  if (!is.vector(X)) stop("X must be a vector")
+
+mm_scaler <- function(x) {
   
-  # Calculate Laguerre polynomial L_i(X)
-  result <- 0
-  for (n in 0:i) {
-    result <- result + ((-1)^n * choose(i, n) * X^n / factorial(n))
+  xmin = min(x)
+  xmax = max(x)
+  a = 2 / (xmax - xmin)
+  b = 1 - a * xmax
+  return( a*x+b)
+}
+
+laguerre_basis <- function(k, x) {
+  laguerre_pi <- function(i, x) {
+    if (i == 0) return(exp(-x / 2))
+    coeff - sapply(0:i, function(j) ((-1)^j * choose(i, j) * x^j) / factorial(j))
+    return(exp(-x / 2) * rowSums(coeff))
   }
-  
-  return(result * exp(-X / 2))  # Apply exponential decay for the generalized form
+  # Use sapply to compute Laguerre polynomials and convert result to a matrix
+  result = sapply(0:(k - 1), function(i) laguerre_pi(i, x))
+  return(as.matrix(result))  # Convert to matrix
 }
 
-monte_carlo <- function(sample) {
+laguerre_basis0 <- function(k, x) {
+  laguerre_pi <- function(i, x) {
+    if (i == 0) return(exp(-x / 2))
+    coeff = sapply(0:i, function(j) ((-1)^j * choose(i, j) * x^j) / factorial(j))
+    return(exp(-x / 2) * rowSums(coeff))
+  }
+  return(as.data.frame(sapply(0:(k-1), function(i) laguerre_pi(i, x))))
+}
 
-    x_bar = sample[1]
-    y_bar = x_bar ** 2
-    
-    for  (i in 2:n) {
-      x = sample[i]
-      x_bar = (1-1/i) * x_bar + (1/i) * x 
-      y_bar = (1-1/i) * y_bar + (1/i) * (x ** 2)
+chebyshev_basis <- function(k, x) {
+
+  n = length(x)
+  X = matrix(0, nrow = n, ncol = k + 1)  
+  X[, 1] = 1 
+  if (k > 0) {
+    X[, 2] = x 
+  }
+  if (k > 1) {
+    for (i in 3:(k + 1)) {  
+      X[, i] = 2 * x * X[, i - 1] - X[, i - 2]
     }
-    return(list(x_bar = x_bar, y_bar=y_bar))
+  }
+  return(X[, -1])  
 }
 
-#LSM_American_put <- function(S, )
+chebyshev_basis0 <- function(k,x) {
+  X = data.frame(matrix(ncol = 0, nrow = length(x)))
+  X[[paste0("CB",0)]] = rep(1, length(x))
+  X[[paste0("CB",1)]] = x
+  if (k > 1) {
+    for (i in 2:k) {
+      X[[paste0("CB",i)]] = 2 * x * X[[paste0("CB",i-1)]] - X[[paste0("CB",i-2)]]
+    }
+  }
+  return(subset(X, select = -CB0))
+}
+
 ```
 
-
-
 ```{r}
-nrow(S_df)
+run_ols <- function(X, Y) {
+  beta <- solve(t(X) %*% X, t(X) %*% Y)  # OLS coefficients
+  return(X %*% beta)  # Predicted values
+}
 ```
 
-
-
 ```{r}
+start_time = Sys.time()
 m = 20
 # m = c(10,20,30,40,50)
-n = 10
+n = 64000
 # n = c(1000,1000*4, 100*4**2, 1000*4**3, 1000*4**4)
 delta_t = t/m
 k_regressors = 3
 
-S_df = simulate_S_paths(S0,r,q,sigma,n,m,delta_t) 
+S_df = simulate_S_paths0(S0,r,q,sigma,n,m,delta_t) 
 
 exercise_times = rep(m,n)
 payoff_df = data.frame(apply(K - S_df, c(1, 2), function(x) max(x, 0)))
@@ -118,39 +170,82 @@ S_scaled_df = S_df
 
 for (i in (m-1):1) {
   itm_idx = payoff_df[,i] > 0
-  future_cashflows = mapply(function(row, col) payoff_df[row, col], row = 1:nrow(payoff_scaled_df), col = exercise_times)[itm_idx]
+  future_cashflows = payoff_df[cbind(1:n, exercise_times)][itm_idx]
   discount_times = delta_t * (exercise_times - i)
   Y = future_cashflows * exp(-r*discount_times[itm_idx])
   # X = S_df[,i][itm_idx]
   S_itm = S_scaled_df[,i][itm_idx]
   
   # Laguerre polynomial 
-  X = data.frame(matrix(ncol = 0, nrow = length(S_itm)))
-  for (o_i in 0:(k_regressors-1)) {
-    
-    #X[[paste0("L",o_i)]] = laguerre_poly(S_itm, o_i)
-    X[[paste0("X",o_i + 1)]] = S_itm ** (o_i + 1)
-  }
+  # X = laguerre_basis(k_regressors, mm_scaler(S_itm))
+  # X = reg_poly_basis(k_regressors, mm_scaler(S_itm))
+  X = chebyshev_basis0(k_regressors, mm_scaler(S_itm))
   model = lm(Y ~ ., data=X)
-  #summary(model)
   cond_exp_Y = predict(model, newdata = data.frame(X))
+  # cond_exp_Y = run_ols(cbind(1, X), Y)
   names(cond_exp_Y) = NULL
   current_itm_payoff = payoff_scaled_df[,i][itm_idx]
   exercise_times[itm_idx] = ifelse(current_itm_payoff > cond_exp_Y, i, exercise_times[itm_idx])
 }
+end_time = Sys.time()
+end_time - start_time
 ```
-```{r}
-summary(model)
-```
-
 ```{r}
 payoff_decisions = mapply(function(row, col) payoff_df[row, col], row = 1:nrow(payoff_df), col = exercise_times)
 discount_times = delta_t * (exercise_times - i)
 option_path_values = payoff_decisions * exp(-r*discount_times)
 option_expected_value = mean(option_path_values)
 option_expected_value
-exercise_times
-as.matrix(payoff_df)
+```
+
+
+
+```{r}
+start_time = Sys.time()
+m = 20
+# m = c(10,20,30,40,50)
+n = 64000
+# n = c(1000,1000*4, 100*4**2, 1000*4**3, 1000*4**4)
+delta_t = t/m
+k_regressors = 3
+
+S_mat = simulate_S_paths(S0,r,q,sigma,n,m,delta_t) 
+
+exercise_times = rep(m,n)
+payoff_mat = pmax(K-S_mat,0)
+
+
+for (i in (m-1):1) {
+  itm_idx = payoff_df[,i] > 0
+  future_cashflows = payoff_mat[cbind(1:n, exercise_times)][itm_idx]
+  discount_times = delta_t * (exercise_times - i)
+  Y = future_cashflows * exp(-r*discount_times[itm_idx])
+  # X = S_df[,i][itm_idx]
+  S_itm = S_mat[,i][itm_idx]
+  
+  # Laguerre polynomial 
+  X = chebyshev_basis(k_regressors, mm_scaler(S_itm))
+  # X = reg_poly_basis(k_regressors, mm_scaler(S_itm))
+  # X = chebyshev_basis(k_regressors, mm_scaler(S_itm))
+  # model = lm(Y ~ ., data=as.data.frame(X))
+  # cond_exp_Y = predict(model, newdata = as.data.frame(X))
+  cond_exp_Y = run_ols(cbind(1, X), Y)
+  names(cond_exp_Y) = NULL
+  current_itm_payoff = payoff_mat[,i][itm_idx]
+  exercise_times[itm_idx] = ifelse(current_itm_payoff > cond_exp_Y, i, exercise_times[itm_idx])
+}
+end_time = Sys.time()
+end_time - start_time
+```
+
+
+
+```{r}
+payoff_decisions = payoff_mat[cbind(1:n, exercise_times)]
+discount_times = delta_t * (exercise_times - i)
+option_path_values = payoff_decisions * exp(-r*discount_times)
+option_expected_value = mean(option_path_values)
+option_expected_value
 
 ```
 
