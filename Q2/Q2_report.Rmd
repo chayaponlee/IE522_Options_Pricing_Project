@@ -180,13 +180,60 @@ for (N in sample_sizes) {
   ))
 }
 
+suppressWarnings(suppressPackageStartupMessages({
+  library(ggplot2)
+  library(knitr)
+  library(dplyr)
+}))
 # Display results in a table
-print(standard_mc_results)
+kable(standard_mc_results, caption = "Monte Carlo Simulation Results")
+
+```
+```{r}
+
+# Plot the convergence of Option Price
+ggplot(standard_mc_results, aes(x = Sample_Size, y = Option_Price)) +
+  geom_line(color = "blue") +
+  geom_point(size = 3, color = "blue") +
+  geom_ribbon(aes(ymin = CI_Lower, ymax = CI_Upper), fill = "grey80", alpha = 0.5) +
+  scale_x_log10() +
+  labs(
+    title = "Convergence of Option Price as Sample Size Increases",
+    x = "Sample Size (log scale)",
+    y = "Option Price"
+  ) +
+  theme_minimal()
+```
+```{r}
+
+# Plot the convergence of Standard Error on log-log scale
+ggplot(standard_mc_results, aes(x = Sample_Size, y = Standard_Error)) +
+  geom_line(color = "blue") +
+  geom_point(size = 3, color = "blue") +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    title = "Convergence of Standard Error (log-log scale)",
+    x = "Sample Size (log scale)",
+    y = "Standard Error (log scale)"
+  ) +
+  theme_minimal()
+
 ```
 
-The accuracy of Monte Carlo simulation is governed by the Central Limit Theorem. The error in the estimated option price decreases as the number of simulated paths \( N \) increases. Specifically, the standard error of the Monte Carlo estimate is proportional to \( \mathcal{O}(1/\sqrt{N}) \), where \( N \) is the number of simulations. Achieving higher accuracy requires a significant increase in the number of simulated paths, leading to higher computational cost.
 
-To halve the error, the number of simulations must be increased by a factor of four. While the Monte Carlo method is flexible and robust, this slow convergence rate necessitates the use of variance reduction techniques to improve efficiency.
+### Convergence of Option Price
+
+The first plot highlights the behavior of the estimated option price as the sample size increases. For smaller sample sizes (e.g., \( N = 1000 \)), the option price exhibits larger variability and a wider confidence interval, indicating less precision. As the sample size increases to \( N = 256,000 \), the option price converges to a stable value of approximately 7.17, with the 95% confidence interval narrowing significantly to a width of 0.06. This reflects the expected improvement in accuracy with larger sample sizes, consistent with Monte Carlo theory. The convergence is gradual, with the estimates stabilizing beyond \( N = 64,000 \).
+
+### Convergence of Standard Error
+
+The second plot, presented on a log-log scale, demonstrates the relationship between the standard error and the sample size. The convergence follows the theoretical rate of:
+\[
+\text{Standard Error} \propto \frac{1}{\sqrt{N}}
+\]
+This means that as the sample size increases by a factor of 4, the standard error decreases approximately by half. The straight line in the log-log plot shows that doubling the sample size results in a consistent proportional reduction in the standard error, making it predictable and reliable. For example: at \( N = 1000 \), the standard error is 0.26869. At \( N = 4000 \) (4 times \( N = 1000 \)), the standard error decreases to approximately 0.14233. Similarly, at \( N = 16,000 \) (another 4x increase), the standard error further decreases to 0.06805.
+
 
 \textbf{2.3 Variance Reduction Techniques-- Control Variate Method}
 
@@ -325,9 +372,9 @@ price_asian_call_MC_control_variate <- function(S0, K, T, r, q, sigma, m, N) {
   
   return(list(
     N = N,
-    Option_Price_CV = round(option_price_cv, 2),
-    Standard_Error_CV = round(std_error_cv, 5),
-    Confidence_Interval_CV = c(round(CI_lower_cv, 2), round(CI_upper_cv, 2)),
+    Option_Price = round(option_price_cv, 2),
+    Standard_Error = round(std_error_cv, 5),
+    Confidence_Interval = c(round(CI_lower_cv, 2), round(CI_upper_cv, 2)),
     Computation_Time_sec = round(comp_time, 4)
   ))
 }
@@ -344,109 +391,122 @@ sigma <- 0.20  # Volatility
 m <- 50        # Number of monitoring points
 
 sample_sizes <- c(1000, 4000, 16000, 64000, 256000)
+# Initialize the results data frame
 results_cv <- data.frame(
   Sample_Size = numeric(),
-  Option_Price_CV = numeric(),
-  Standard_Error_CV = numeric(),
-  CI_Lower_CV = numeric(),
-  CI_Upper_CV = numeric(),
+  Option_Price = numeric(),
+  Standard_Error = numeric(),
+  CI_Lower = numeric(),
+  CI_Upper = numeric(),
   Computation_Time_sec = numeric(),
   stringsAsFactors = FALSE
 )
-
+# Remove or comment out the next line to prevent printing the empty data frame
+# results_cv
 
 for (N in sample_sizes) {
   # Monte Carlo with Control Variate
   res_cv <- price_asian_call_MC_control_variate(S0, K, T, r, q, sigma, m, N)
   results_cv <- rbind(results_cv, data.frame(
-    Sample_Size = res_cv$N,
-    Option_Price_CV = res_cv$Option_Price_CV,
-    Standard_Error_CV = res_cv$Standard_Error_CV,
-    CI_Lower_CV = res_cv$Confidence_Interval_CV[1],
-    CI_Upper_CV = res_cv$Confidence_Interval_CV[2],
+    Sample_Size = N,
+    Option_Price = res_cv$Option_Price,
+    Standard_Error = res_cv$Standard_Error,
+    CI_Lower = res_cv$Confidence_Interval[1],
+    CI_Upper = res_cv$Confidence_Interval[2],
     Computation_Time_sec = res_cv$Computation_Time_sec
   ))
 }
 
-print(results_cv)
+# Display the final results using kable
+kable(results_cv, caption = "Monte Carlo with Control Variate Simulation Results")
+
 
 ```
 
-\textbf{2.4 Results and Discussion}
+```{r}
+# Combine data if not already done
+standard_mc_results$Method <- "Standard Monte Carlo"
+results_cv$Method <- "Control Variate"
+comparison_results <- rbind(standard_mc_results, results_cv)
 
-The following tables summarize the results obtained from pricing the Asian call option using the standard Monte Carlo method and the control variate method. 
-
-```{r option-price-plot, echo=TRUE}
-library(ggplot2)
-combined_option_price <- data.frame(
-  Sample_Size = rep(standard_mc_results$Sample_Size, 2),
-  Option_Price = c(standard_mc_results$Option_Price, results_cv$Option_Price_CV),
-  Method = rep(c("Standard MC", "Control Variate"), each = 5)
-)
-
-# Plot Option Price comparison
-ggplot(combined_option_price, aes(x = Sample_Size, y = Option_Price, color = Method)) +
+# Plot Option Price Convergence with 95% CI
+ggplot(comparison_results, aes(x = Sample_Size, y = Option_Price, color = Method, group = Method)) +
   geom_line() +
-  geom_point() +
+  geom_point(size = 3) +
+  geom_ribbon(
+    aes(ymin = CI_Lower, ymax = CI_Upper, fill = Method),
+    alpha = 0.2,
+    color = NA
+  ) +
   scale_x_log10() +
   labs(
-    title = "Option Price Comparison",
+    title = "Option Price Convergence with 95% CI: Standard MC vs Control Variate",
     x = "Sample Size (log scale)",
-    y = "Option Price"
+    y = "Option Price",
+    color = "Method",
+    fill = "Method"
   ) +
   theme_minimal()
-
-combined_standard_error <- data.frame(
-  Sample_Size = rep(standard_mc_results$Sample_Size, 2),
-  Standard_Error = c(standard_mc_results$Standard_Error, results_cv$Standard_Error_CV),
-  Method = rep(c("Standard MC", "Control Variate"), each = 5)
-)
-
-# Plot Standard Error comparison
-ggplot(combined_standard_error, aes(x = Sample_Size, y = Standard_Error, color = Method)) +
+```
+```{r}
+# Plot Standard Error Convergence
+ggplot(comparison_results, aes(x = Sample_Size, y = Standard_Error, color = Method, group = Method)) +
   geom_line() +
-  geom_point() +
+  geom_point(size = 3) +
   scale_x_log10() +
+  scale_y_log10() +
   labs(
-    title = "Standard Error Comparison",
+    title = "Standard Error Convergence: Standard MC vs Control Variate",
     x = "Sample Size (log scale)",
-    y = "Standard Error"
-  ) +
-  theme_minimal()
-
-combined_computation_time <- data.frame(
-  Sample_Size = rep(standard_mc_results$Sample_Size, 2),
-  Computation_Time_sec = c(standard_mc_results$Computation_Time_sec, results_cv$Computation_Time_sec),
-  Method = rep(c("Standard MC", "Control Variate"), each = 5)
-)
-
-# Plot Computation Time comparison
-ggplot(combined_computation_time, aes(x = Sample_Size, y = Computation_Time_sec, color = Method)) +
-  geom_line() +
-  geom_point() +
-  scale_x_log10() +
-  labs(
-    title = "Computation Time Comparison",
-    x = "Sample Size (log scale)",
-    y = "Computation Time (seconds)"
+    y = "Standard Error (log-log scale)",
+    color = "Method"
   ) +
   theme_minimal()
 
 ```
+
+```{r}
+# Plot Computation Time Comparison
+ggplot(comparison_results, aes(x = Sample_Size, y = Computation_Time_sec, color = Method, group = Method)) +
+  geom_line() +
+  geom_point(size = 3) +
+  scale_x_log10() +
+  labs(
+    title = "Computation Time: Standard MC vs Control Variate",
+    x = "Sample Size (log scale)",
+    y = "Computation Time (seconds)",
+    color = "Method"
+  ) +
+  theme_minimal()
+```
+
+\textbf{2.4 Analysis of Results: Comparing Standard Monte Carlo (MC) and Control Variate (CV)}
 
 The comparison of the Standard Monte Carlo method and the Control Variate method reveals clear advantages of the latter in terms of convergence rate, variance reduction, and overall efficiency.
 
-The convergence of option prices is significantly faster in the Control Variate method. While the Standard MC method shows notable fluctuations in price estimates at smaller sample sizes, the Control Variate consistently produces stable estimates across all sample sizes. For instance, at \(N = 1000\), the Standard MC option price estimate is \(7.02\), compared to \(7.17\) for the Control Variate, which is already close to the final converged value. This demonstrates that the Control Variate method achieves accurate results with fewer simulations, making it more reliable for practical applications.
+### 1. Option Price Convergence
 
-In terms of variance reduction, the Control Variate method far outperforms Standard MC. The standard error for the Standard MC method is significantly higher at all sample sizes. For example: at \(N = 1000\), the standard error is \(0.26869\) for Standard MC, compared to just \(0.00814\) for the Control Variate. Even at larger sample sizes, the Control Variate maintains a much lower standard error, with \(0.00051\) at \(N = 256000\).
+The Option Price Convergence plot highlights the convergence of option price estimates as the sample size increases. The control variate method demonstrates significantly tighter confidence intervals compared to the standard Monte Carlo method.
 
-This reflects the Control Variate method's ability to stabilize the estimator. This variance reduction directly contributes to the method’s precision and robustness.
+For the CV method, the option price estimate stabilizes more rapidly and converges to a consistent value, even at smaller sample sizes. In contrast, the standard MC method requires larger sample sizes to achieve comparable stability. Both methods ultimately converge to approximately the same option price as the sample size increases (\( N = 256,000 \)), confirming the consistency of their final estimates.
 
-The computational efficiency of the Control Variate method is also noteworthy. While it takes slightly longer to execute at larger sample sizes, this additional time is marginal compared to the substantial improvements in accuracy and precision. For instance: at \(N = 256000\), the computation time for Control Variate is \(3.85\) seconds, only slightly more than the \(3.25\) seconds required by Standard MC.
+The tighter confidence intervals produced by the CV method highlight its ability to improve precision, particularly when computational resources are limited or fewer samples are used. 
 
-Given the dramatic reduction in variance and the faster convergence of the Control Variate method, this minor increase in computation time is a small trade-off for the significant benefits it offers.
 
-Overall, the Control Variate method is a more efficient and reliable approach for estimating option prices. Its ability to achieve accurate results with smaller sample sizes, coupled with significant variance reduction and modest computational demands, makes it superior to the Standard Monte Carlo method in this context.
+### 2. Standard Error Convergence
+
+The Standard Error Convergence plot examines the convergence of standard error on a log-log scale. Both methods exhibit the expected Monte Carlo convergence rate of \( O(1/\sqrt{N}) \), as evidenced by the linear trends in the plot. However, the CV method consistently achieves lower standard errors compared to the standard MC method at all sample sizes.
+
+For instance: at \( N = 1000 \), the CV method achieves a standard error more than 10 times smaller than the standard MC method. Even as \( N \) increases to \( 256,000 \), the CV method maintains a significant advantage in standard error reduction.
+
+This reduction in standard error reflects the CV method's effectiveness in reducing variance, which is critical in applications requiring high precision. The CV technique allows for comparable accuracy with far fewer samples, making it computationally more efficient than standard MC.
+
+
+### 3. Computation Time
+
+The third plot compares the computation times for the two methods. As expected, the computation time increases linearly with sample size for both approaches. The CV method incurs slightly higher computational costs compared to standard MC, reflecting the additional calculations required for the control variate adjustment. For example, at \( N = 256,000 \), the computation time for CV is marginally higher than that of standard MC.
+
+Despite this minor overhead, the significant reduction in variance achieved by the CV method more than compensates for the slightly higher computation cost. This trade-off makes the CV technique highly effective in scenarios where variance reduction is a priority.
 
 
 \textbf{2.5 Further Discussion on Variance Reduction Techniques}
