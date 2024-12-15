@@ -1,0 +1,13 @@
+---
+title: "522_conclusion"
+output: pdf_document
+date: "2024-12-15"
+---
+
+This report summarized how Monte Carlo simulation can be applied to pricing three types of options: European vanilla put options, Asian call options, and American vanilla put options. The results showed how to price complex options, especially when a closed formed solution was unavailable. Variance reduction techniques, such as the antithetic approach, the control variate approach, and the quasi-random sequence approach were used to improve the accuracy of the option price and the computational efficiency. In addition, the Longstaff-Schwartz method for American options and the Binomial Black-Scholes with Richardson Extrapolation method were used as benchmarks for early exercise strategies. This report showed how Monte Carlo simulations are able to precisely price complex options and investigated convergence speed and computational efficiency across the different methods.
+
+In pricing the European vanilla put option with the following parameters, \( S_0 = K = 100, \, T = 0.5, \, r = 0.04, \, q = 0.02, \, \sigma = 0.2 \), the exact European put option price under Black-Scholes-Merton was calculated to be $5.0746. The standard Monte Carlo approach was the slowest at converging to within $0.01 of the exact price, with a sample size of around 256,000. The antithetic approach was the next fastest, converging to within $0.01 of the exact price with a sample size of around 64,000 (32,000 anithetic pairs). The Quasi-Monte-Carlo approach was the fastest, converging to within $0.01 of the exact price in around 4,000 samples.
+
+Insert paragraph on conclusions from Question 2
+
+Insert paragraph on conclusions from Question 3
