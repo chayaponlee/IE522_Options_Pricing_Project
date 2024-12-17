@@ -4,9 +4,9 @@ date: "2024-10-30"
 output: pdf_document
 ---
 
-\section*{3. Least-Squares Monte Carlo Algorithm (LSM) on Put Option}
+\section*{4. Least-Squares Monte Carlo Algorithm (LSM) on Put Option}
 
-\textbf{3.1 Objective and Motivation}
+\textbf{4.1 Objective and Motivation}
 
 In this section, we implement the Least Squares Monte Carlo (LSM) algorithm based on the method outlined in the paper “Valuing American Options by Simulation: A Simple Least-Squares Approach” by Longstaff and Schwartz. The LSM approach is highly effective in pricing American options, as it estimates the conditional expectation of continuation payoffs, which is crucial for determining the optimal exercise strategy. This aligns with the fundamental asset pricing theorem, where the conditional expectation under the risk-neutral measure ensures that the stock price paths \(S_t^* = S_t e^{-rt}\)  are modeled as martingales, reflecting no-arbitrage conditions. By leveraging the martingale property and performing cross-sectional regression on simulated paths, LSM accurately captures the fair price of the option’s continuation payoff.
 
@@ -14,7 +14,7 @@ It is important to note that the goal of this report is not to summarize or rest
 
 One potential drawback of the LSM algorithm, if implemented naively, is its computational expense. As both the number of paths and time steps increase, the computational cost grows significantly due to the need for performing least-squares regression at each recursive step. We will also address these challenges by presenting our efforts to improve the computational efficiency of the algorithm and the resulting performance enhancements.
 
-\textbf{3.2 Generating Stock Path}
+\textbf{4.2 Generating Stock Path}
 
 Each stock path follows a geometric brownian motion under the risk-neutral measure, complying to no-arbitrage and ensuring the discounted stock $S^*$ paths are martingales. We define our stock process for each discrete time step \(\Delta t\) as
 
@@ -24,9 +24,9 @@ where $S_t$ is our stock value, $r$ and $q$ is our constant risk-free rate and c
 
 \textbf{Variance Reduction 1:} We generate our stocks paths by creating an antithetic counterpart to $\phi_t^i$ for each $\phi_t^i$ generaated. Specifically for each time step, if we require $n$ paths, we only need to generate $n/2$ values of $\phi_t^1,\phi_t^1,....\phi_t^{n/2},$ and take the negative for the other half. By introducing negative correlation between paired outcomes, antithetic variates balance fluctuations in opposite directions, reducing variance and enabling the Monte Carlo estimator to converge more efficiently to the true value without increasing the sample size.
 
-The implementation of the stock path simulation is shown in Snippet 3.1. 
+The implementation of the stock path simulation is shown in Snippet 4.1. 
 
-\begin{center}\textit{Snippet 3.1: Generating stock path matrix}\end{center}
+\begin{center}\textit{Snippet 4.1: Generating stock path matrix}\end{center}
 ```{r}
 simulate_S_paths <- function(S0,r,q,sigma,n,m,delta_t) {
   set.seed(3)
@@ -44,15 +44,15 @@ simulate_S_paths <- function(S0,r,q,sigma,n,m,delta_t) {
 }
 ```
 
-\textbf{3.3 Choice of Basis Function and Scaling Stock Prices}
+\textbf{4.3 Choice of Basis Function and Scaling Stock Prices}
 
-In our experiment, we ran our least squares method by representing our regressors as basis functions calculated from our underlying stock prices \(S_t = {S_t^1, S_t^2,....., S_t^n}\) for each time step $t$. Although our primary analysis will be based on using Chebyshev polynomials as our basis function, we did run simulations on Laguerre polynomials (as suggested in the paper) as well. We concluded that the converged put option values are very similar to each other, and the discrepancy between the two choices of basis functions is very small. Both polynomials are orthogonal, which helps reduce collinearity between the regressors. We omit the use of regular polynomials since they are prone to collinearity. Using Chebyshev and Laguerre polynomials has proven to offer numerical stability in performing least squares regression. For interested readers, we include our LSM results using Laguerre polynomials in Appendix 3.2.
+In our experiment, we ran our least squares method by representing our regressors as basis functions calculated from our underlying stock prices \(S_t = {S_t^1, S_t^2,....., S_t^n}\) for each time step $t$. Although our primary analysis will be based on using Chebyshev polynomials as our basis function, we did run simulations on Laguerre polynomials (as suggested in the paper) as well. We concluded that the converged put option values are very similar to each other, and the discrepancy between the two choices of basis functions is very small. Both polynomials are orthogonal, which helps reduce collinearity between the regressors. We omit the use of regular polynomials since they are prone to collinearity. Using Chebyshev and Laguerre polynomials has proven to offer numerical stability in performing least squares regression. For interested readers, we include our LSM results using Laguerre polynomials in Appendix 4.2.
 
 Before applying Chebyshev polynomial conversions on the stock prices, we apply min-max scaling with boundary $[-1,1]$ since Chebyshev polynomials are orthogonal between $[-1,1]$ and minimize the approximation error within these boundaries. For Laguerre polynomials, we apply min-max scaling with boundary $[0,1]$, since they are designed to take positive values $[0,\infty]$, but because they consist of exponential terms, we cap our normalized value within 1, ensuring numerical stability.
 
-We demonstrate our implementations of our basis functions and scaling functions in Snippet 3.2.
+We demonstrate our implementations of our basis functions and scaling functions in Snippet 4.2.
 
-\begin{center}\textit{Snippet 3.2: Basis Functions and min-max scaler}\end{center}
+\begin{center}\textit{Snippet 4.2: Basis Functions and min-max scaler}\end{center}
 ```{r}
 mm_scaler <- function(x) {
   
@@ -91,14 +91,14 @@ chebyshev_basis <- function(k, x) {
 }
 ```
 
-\textbf{3.4 Least Squares Monte Carlo Algorithm}
+\textbf{4.4 Least Squares Monte Carlo Algorithm}
 
-In this section, we briefly go through our implementation of the LSM algorithm. We start by generating our $n$ stock paths with $m$ time steps and pre-calculate our payoff matrix. We apply backward recursive steps starting from the $m-1$th step. As for American options, we are concerned with stock paths that give us the opportunity to early exercise; paths that are in-the-money (ITM) at any time step. The idea is we want to compare the these ITM paths' payoffs with the conditional expectation of (discounted) continuation payoffs (\( \hat{V}_{cont.}^t\mathbb{E}[V_{cont.}^t| X_{S_t}]\)), and decide whether or not to exercise at at current time step $t$ or at the future $t+a$ step, where $t+a$ will depend on our tracked stopping time for each stock path . We generate our conditional expectations by running least squares on our transformed $S_t$'s in the form of Chebyshev Polynomials. The parameter $k$ will determine the number of regressors, and hence will specify the order of the polynomials. Through out our report, we denote $k$ as the number of regressors not including the constant term, so $k$ specifically is the number of polynomial regressors. We also define a vector "exercise_times" to keep track of our stopping times for each stock path. At any time step and stock path, if the current payoff exceeds $\hat{V}_{cont.}^t$, then we update our stopping time by replacing stopping time $t+a$ with $t$. Once all time steps have been recursively traversed, we discount all the payoffs of every stock path with reference to our tracked stopping times and compute the following measures: the expectation and standard error of the discounted payoffs, percentage of stock paths that have been early exercised, and exercise times. The code snippet of our implementation can be viewed in Snippet 3. 
+In this section, we briefly go through our implementation of the LSM algorithm. We start by generating our $n$ stock paths with $m$ time steps and pre-calculate our payoff matrix. We apply backward recursive steps starting from the $m-1$th step. As for American options, we are concerned with stock paths that give us the opportunity to early exercise; paths that are in-the-money (ITM) at any time step. The idea is we want to compare the these ITM paths' payoffs with the conditional expectation of (discounted) continuation payoffs (\( \hat{V}_{cont.}^t\mathbb{E}[V_{cont.}^t| X_{S_t}]\)), and decide whether or not to exercise at at current time step $t$ or at the future $t+a$ step, where $t+a$ will depend on our tracked stopping time for each stock path . We generate our conditional expectations by running least squares on our transformed $S_t$'s in the form of Chebyshev Polynomials. The parameter $k$ will determine the number of regressors, and hence will specify the order of the polynomials. Through out our report, we denote $k$ as the number of regressors not including the constant term, so $k$ specifically is the number of polynomial regressors. We also define a vector "exercise_times" to keep track of our stopping times for each stock path. At any time step and stock path, if the current payoff exceeds $\hat{V}_{cont.}^t$, then we update our stopping time by replacing stopping time $t+a$ with $t$. Once all time steps have been recursively traversed, we discount all the payoffs of every stock path with reference to our tracked stopping times and compute the following measures: the expectation and standard error of the discounted payoffs, percentage of stock paths that have been early exercised, and exercise times. The code snippet of our implementation can be viewed in Snippet 4.3. 
 
 \textbf{Variance Reduction 2:} Although we can use the entire $n$ stock paths as our input to the least squares algorithm, we only used samples that are ITM. Using only ITM stock paths in LSM improves the accuracy of the regression by focusing on paths where the option holder might exercise. OTM paths contribute no useful information since their payoffs are always zero, adding unnecessary noise to the estimation. Limiting the regression to ITM paths reduces variance, leading to more precise estimates of the continuation value and a better exercise strategy. This approach also improves computational efficiency by decreasing the number of data points used in the regression.
 
 \newpage
-\begin{center}\textit{Snippet 3.3: LSM Algorithm Implementation}\end{center}
+\begin{center}\textit{Snippet 4.3: LSM Algorithm Implementation}\end{center}
 ```{r}
 LSM_put <- function(S0,K,r,q,sigma,t,n,m, k_regressors, basis_func) {
   run_ols <- function(X, Y) { # function to generate condtional expectation values using least squares
@@ -155,13 +155,13 @@ LSM_put <- function(S0,K,r,q,sigma,t,n,m, k_regressors, basis_func) {
               ee_times=exercise_times))}
 ```
 
-\textbf{3.5 Computational Efficiency Improvements}
+\textbf{4.5 Computational Efficiency Improvements}
 
-In this section, we explain our implementations aimed at increasing the computational efficiency and speed of our LSM algorithm. Our original implementation of the algorithm relied primarily on manipulating dataframe objects and passing our regressors’ dataframe into R’s “lm” least squares package. This method proved to be underwhelming in terms of computational speed and allocated unnecessary memory overhead in R (or, in fact, in any scientific programming language). For interested readers, the original implementation of the algorithm, including the basis function implementations, can be found in Appendix 3.1. However, we argue that starting the prototyping of the algorithm with dataframes is preferred, as it is easier to debug and more intuitive for the developer. For instance, it allows us to check the least squares results to verify whether numerical instability persists and whether the coefficients produced are stable.
+In this section, we explain our implementations aimed at increasing the computational efficiency and speed of our LSM algorithm. Our original implementation of the algorithm relied primarily on manipulating dataframe objects and passing our regressors’ dataframe into R’s “lm” least squares package. This method proved to be underwhelming in terms of computational speed and allocated unnecessary memory overhead in R (or, in fact, in any scientific programming language). For interested readers, the original implementation of the algorithm, including the basis function implementations, can be found in Appendix 4.1. However, we argue that starting the prototyping of the algorithm with dataframes is preferred, as it is easier to debug and more intuitive for the developer. For instance, it allows us to check the least squares results to verify whether numerical instability persists and whether the coefficients produced are stable.
 
-After ensuring that our algorithm computations were stable and the results sound, we shifted our approach from working with dataframes to matrices, as seen in Snippets 3.2 and 3.3. In this updated approach, the entire code now consists solely of matrix computations. In particular, we discarded the “lm” package and implemented our own least squares function, solving for the coefficients using the R function “solve” and computing the dot product between the Chebyshev polynomials and coefficients. This change resulted in a significant improvement in computational efficiency.
+After ensuring that our algorithm computations were stable and the results sound, we shifted our approach from working with dataframes to matrices, as seen in Snippets 4.2 and 4.3. In this updated approach, the entire code now consists solely of matrix computations. In particular, we discarded the “lm” package and implemented our own least squares function, solving for the coefficients using the R function “solve” and computing the dot product between the Chebyshev polynomials and coefficients. This change resulted in a significant improvement in computational efficiency.
 
-We compare the computational speed between the "dataframe" and "matrix" implementations with three regressors in Table 3.1 and Figure 3.1 by using our most precise LSM pricer(n=256000, k=3). Table 3.1 shows the speed in terms of option prices evaluated per second as the number of $m$ time steps increase. Figure 3.1 illustrates this in log10 scaling. As an example, for $m=80$, the speed increased from 0.01 to 0.31 options prices per second. This means that for $n=256000$, the corresponding runtime will have decreased from around 187.1 to 3.2 seconds. As we will see later, for $n=256000$, the standard error of the options price is very small and hence at 3.2 seconds runtime. We compare the runtimes for $n=256000$ and three regressors in Table 3.2. 
+We compare the computational speed between the "dataframe" and "matrix" implementations with three regressors in Table 4.1 and Figure 4.1 by using our most precise LSM pricer(n=256000, k=3).Computational speed is calculated as option prices per second by taking the inverse of the run time (sec). Table 4.1 shows the speed of in computing each options price as the number of $m$ time steps increase. Figure 4.1 illustrates this in log10 scaling. As an example, for $m=80$, the speed increased from 0.01 to 0.31 options prices per second. This means that for $n=256000$, the corresponding runtime will have decreased from around 187.1 to 3.2 seconds. As we will see later during accuracy evaluation, for $n=256000$, the standard error of the options price is very small. We compare the runtimes for $n=256000$ and three regressors in Table 4.2. 
 
 
 ```{r, echo=FALSE}
@@ -169,7 +169,7 @@ library(knitr)
 library(kableExtra)
 ```
 
-\begin{center}\textit{Table 3.1: Computational Speed Comparison (in units of prices/second) for n=256000 and k=3}\end{center}
+\begin{center}\textit{Table 4.1: Computational Speed Comparison (in units of prices/second) for n=256000 and k=3}\end{center}
 ```{r, echo=FALSE}
 put_LSM_results_fast = read.csv("put_LSM_cpf_res_20241127.csv", header=TRUE, row.names=1)
 put_LSM_results_slow = read.csv("put_LSM_cp_res_20241127.csv", header=TRUE, row.names=1)
@@ -189,7 +189,7 @@ kable(speed_df, "latex", booktabs = TRUE) %>%
   kable_styling(latex_options = c("scale_down","striped","hold_position"))
 ```
 
-\begin{center}\textit{Table 3.2: Runtime Comparison for n=256000 and k=3}\end{center}
+\begin{center}\textit{Table 4.2: Runtime Comparison for n=256000 and k=3}\end{center}
 
 ```{r, echo=FALSE}
 rt_mat = round(rbind(rt2,rt1),2)
@@ -200,7 +200,7 @@ kable(rt_df, "latex", booktabs = TRUE) %>%
   kable_styling(latex_options = c("scale_down","striped","hold_position"))
 
 ```
-\begin{center}\textit{Figure 3.1: Computational Speed Improvements}\end{center}
+\begin{center}\textit{Figure 4.1: Computational Speed Improvements}\end{center}
 ```{r, echo=FALSE}
 logy1 = log10(y1)
 logy2 = log10(y2)
@@ -217,11 +217,11 @@ legend("topright",
        lty = rep(1,2))
 ```
 
-\textbf{3.6 Experiment Implementation}
+\textbf{4.6 Experiment Implementation}
 
-We run our LSM simulation based on the following sets of $n$'s, $m$'s, and $k$'s: \(n: \{1000,4000,16000,64000,256000\}\), \(m:\{10,20,40,80\}\), \(k: \{1,2,3\}\). For our stock parameters: $S_0 = K = 100$, $T = 1/12$, $r = 0.04$, $q=0.02$, and $\sigma=0.2$, corresponding to underlying stock price at $t=0$, strike price, time to maturity, risk-free rate, and continuous dividend rate, respectively. Similar to results shown in the original paper, we also compute the early exercise value by taking the difference between the LSM American option and Black Scholes Merton closed-form (BSM) values. By definition any stock with dividends should lead to a positive early exercise value. As such we define our BSM function in Snippet 3.4. Our iterative implementation of LSM on different combinations of $n$'s, $m$'s, and $k$'s is shown in Snippet 3.5.
+We run our LSM simulation based on the following sets of $n$'s, $m$'s, and $k$'s: \(n: \{1000,4000,16000,64000,256000\}\), \(m:\{10,20,40,80\}\), \(k: \{1,2,3\}\). For our stock parameters: $S_0 = K = 100$, $T = 1/12$, $r = 0.04$, $q=0.02$, and $\sigma=0.2$, corresponding to underlying stock price at $t=0$, strike price, time to maturity, risk-free rate, and continuous dividend rate, respectively. Similar to results shown in the original paper, we also compute the early exercise value by taking the difference between the LSM American option and Black Scholes Merton closed-form (BSM) values. By definition any stock with dividends should lead to a positive early exercise value. As such we define our BSM function in Snippet 4.4. Our iterative implementation of LSM on different combinations of $n$'s, $m$'s, and $k$'s is shown in Snippet 4.5.
 
-\begin{center}\textit{Snippet 3.4: BSM Closed Form Function}\end{center}
+\begin{center}\textit{Snippet 4.4: BSM Closed Form Function}\end{center}
 ```{r}
 # Closed form BSM solution for European put
 european_put_BSM <- function(S,K,r,q,sigma,t) {
@@ -233,7 +233,7 @@ european_put_BSM <- function(S,K,r,q,sigma,t) {
   return(put_price)
 }
 ```
-\begin{center}\textit{Snippet 3.5: Experiment Implementation}\end{center}
+\begin{center}\textit{Snippet 4.5: Experiment Implementation}\end{center}
 ```{r, eval=FALSE}
 # main code to iterate LSM for list of m steps, n paths, and k regressors using Chebyshev Basis Functions
 # output two dataframes: option value and se, early exercise value and % of early exercise paths. 
@@ -297,30 +297,30 @@ for (k_regressors in k_regressors_list) {
 ```
 
 
-\textbf{3.7 Result Analysis}
+\textbf{4.7 Result Analysis}
 
-Table 3.3 shows the LSM simulations results for every combination of $n$'s, $m$'s, and $k$'s stated in section 3.6 and includes put option values (value), standard errors (se), and run times (rt) and Table 3.4 shows the results for early exercise values (EE_value) and percentage of options that were early exercised (Pct_EE). We observed that $\forall k$, the standard error of the put value decreases as we increase $n$. Since we choose $n$ such that for every iteration $n$ increases by 4 times, the standard error of decreases by 2 times, as standard error converges at a rate of order $\frac{1}{\sqrt{n}}$. Although not so obvious, as $m$ increases, we observe that the standard error also decreases but by a very marginal amount. Run time for the simulations also increase as $m$, $n$, $k$ increases. In particular, $\forall n \in [4000,16000]$, we were able to compute put values that have standard errors approximately between 4 to 2 cents, which is certainly admissible for American Options. Figure 3.2 shows the convergence path of the put values as $n$ increases for difference $m$ parameters fixing $k=3$. We can see that for $n<64000$ the convergence path seems to be oscillating quite significantly. For $n > 64000$, we get a very smooth converging path. For $m = 40,80$, the both path converges to a very similar value, which is in line with the fact that as $m$ increases, we get a more accurate result. We will discuss about accuracy of our put value in 3A where we also compute the put option value via Binomial Black-Schoels with Richarson Exprapolation.
+Table 4.3 shows the LSM simulations results for every combination of $n$'s, $m$'s, and $k$'s stated in section 4.6 and includes put option values (value), standard errors (se), and run times (rt) and Table 4.4 shows the results for early exercise values (EE_value) and percentage of options that were early exercised (Pct_EE). We observed that $\forall k$, the standard error of the put value decreases as we increase $n$. Since we choose $n$ such that for every iteration $n$ increases by 4 times, the standard error of decreases by 2 times, as standard error converges at a rate of order $\frac{1}{\sqrt{n}}$. Although not so obvious, as $m$ increases, we observe that the standard error also decreases but by a very marginal amount. Run time for the simulations also increases as either one of the parameters $m$, $n$, $k$ increases. In particular, $\forall n \in [4000,16000]$, we were able to compute put values that have standard errors approximately between 4 to 2 cents, which is certainly admissible for American Options. Figure 4.2 shows the convergence path of the put values as $n$ increases for difference $m$ parameters fixing $k=3$. We can see that for $n<64000$ the convergence path seems to be oscillating quite significantly. For $n > 64000$, we get a very smooth converging path. For $m = 40,80$, both path converges to a very similar value, which is in line with the fact that as $m$ increases, we get a more accurate result. We will discuss about accuracy of our put value in section 4A where we also compute the put option value via Binomial Black-Schoels with Richardson Exprapolation.
 
-Moving on to Table 3.4, we see the effects of including higher order polynomials (increasing $k$). All else equal, both the early exercise value and percentage of early exercise tends to increase. Increasing the order of polynomial basis in LSM improves the accuracy of continuation value estimation, allowing for better identification of early exercise opportunities and capturing complex, nonlinear relationships between stock price and payoffs. This leads to higher early exercise value and percentage of early exercised options. This is also inline with the fact that the early exercise value should positive for dividend paying stocks. Increasing $m$ also increases the percentage of early exercise which comes from the increasing granularity of capturing accurate continuation payoffs. Fixing $m$ and $k$, we see that increasing $n$ reduces the variability in early exercise value and percentage of early exercise. The values stabilize and tend toward convergence as $n$ becomes large.
+Moving on to Table 4.4, we see the effects of including higher order polynomials (increasing $k$). All else equal, both the early exercise value and percentage of early exercise tends to increase. Increasing the order of polynomial basis in LSM improves the accuracy of continuation value estimation, allowing for better identification of early exercise opportunities and capturing complex, nonlinear relationships between stock price and payoffs. This leads to higher early exercise value and percentage of early exercised options. This is also inline with the fact that the early exercise value should positive for dividend paying stocks. Increasing $m$ also increases the percentage of early exercise which comes from the increasing granularity of capturing accurate continuation payoffs. Fixing $m$ and $k$, we see that increasing $n$ reduces the variability in early exercise value and percentage of early exercise. The values stabilize and tend toward convergence as $n$ becomes large.
 
 ```{r, echo=FALSE}
 put_LSM_results = read.csv("put_LSM_cpf_res_20241127.csv", header=TRUE, row.names=1)
 put_LSM_results2 = read.csv("put_LSM_cpf_res2_20241127.csv", header=TRUE, row.names=1)
 ```
-\begin{center}\textit{Table 3.3: Put Option Value, Standard Error, and Run time}\end{center}
+\begin{center}\textit{Table 4.3: Put Option Value, Standard Error, and Run time}\end{center}
 ```{r,echo=FALSE}
 
 kable(put_LSM_results, "latex", booktabs = TRUE) %>%
   kable_styling(latex_options = c("scale_down","striped","hold_position"))
 
 ```
-\begin{center}\textit{Table 3.4: Early Exercise Value, Percentage of Early Exercise}\end{center}
+\begin{center}\textit{Table 4.4: Early Exercise Value, Percentage of Early Exercise}\end{center}
 ```{r,echo=FALSE}
 kable(put_LSM_results2, "latex", booktabs = TRUE) %>%
   kable_styling(latex_options = c("scale_down","striped", "hold_position"))
 ```
 
-\begin{center}\textit{Figure 3.2: Options Convergence path when k=3}\end{center}
+\begin{center}\textit{Figure 4.2: Options Convergence path when k=3}\end{center}
 ```{r, echo=FALSE}
 put_values = put_LSM_results[11:15,c(1,4,7,10)] # for k = 3
 
@@ -344,17 +344,17 @@ legend("topright",
 
 ```
 
-\section*{3A. Put Option Pricing via Binomial Black-Scholes with Richardson Extrapolation}
+\section*{4A. Put Option Pricing via Binomial Black-Scholes with Richardson Extrapolation}
 
-\textbf{3A.1 Objective}
+\textbf{4A.1 Objective}
 
 In this section, we implement the Binomial Black-Scholes with Richardson Extrapolation (BBSR) to compute the put option value. This allows us to compare the accuracy of the put value between using BBSR and LSM. As suggested in the paper "Broadie and Detemple, 1996, American Option Valuation: New Bounds, Approximations, and a Comparison of Existing Methods", we will also define our benchmark for the put option value using a standard Binomial Tree pricer with $m=15000$ time steps. Through this section, we refer to this benchmark as the "True Value". We will also compare computational speeds and convergence behavior with respect to the true put option value.
 
-\textbf{3A.2 BBSR Implementation}
+\textbf{4A.2 BBSR Implementation}
 
-The BBSR algorithm derived from the standard Bimomial Tree algorithm but with some modifications. The first modification is on the $m-1$th time step, where the option continuation value at every node is replaced with the Black-Scholes option value. The binomial tree combined with the first modification is called the Binomial Black-Scholes (BBS). The second modification is applying Richardson extrapolation on the computed option value. In our implementation, we use "two-point" Richardson extrapolation. Referencing to the paper, we use the "two-point" Richardson extrapolation as the authors suggest that higher order extrapolation does not add value in terms of accuracy. Hence as an example, if were to compute the BBSR price $V$ for $m=40$, the Richardson extrapolation formula used to apply on the BBS price is $V = 2\cdot V1 - V0$, where $V1$ and $V0$ are the BBS prices on $m_1,m_0=40,20$, respectively. The BBSR code snippet can be found in Snippet 3.6. In computing the option put value, we use the same stock parameters as defined in Section 3. We ran our algorithm using \(m:\{10,20,40,80,160,320\}\). We also record the run times for $m$ cases. For interested readers, we include our implementation of the standard Binomial Tree algorithm with $m=15000$ in Appendix 3.3. 
+The BBSR algorithm derived from the standard Bimomial Tree algorithm but with some modifications. The first modification is on the $m-1$th time step, where the option continuation value at every node is replaced with the Black-Scholes option value. The binomial tree combined with the first modification is called the Binomial Black-Scholes (BBS). The second modification is applying Richardson extrapolation on the computed option value. In our implementation, we use "two-point" Richardson extrapolation. Referencing to the paper, we use the "two-point" Richardson extrapolation as the authors suggest that higher order extrapolation does not add value in terms of accuracy. Hence as an example, if were to compute the BBSR price $V$ for $m=40$, the Richardson extrapolation formula used to apply on the BBS price is $V = 2\cdot V1 - V0$, where $V1$ and $V0$ are the BBS prices on $m_1,m_0=40,20$, respectively. The BBSR code snippet can be found in Snippet 4.6. In computing the option put value, we use the same stock parameters as defined in section 3. We ran our algorithm using \(m:\{10,20,40,80,160,320\}\). We also record the run times for $m$ cases. For interested readers, we include our implementation of the standard Binomial Tree algorithm with $m=15000$ in Appendix 4.3. 
 
-\begin{center}\textit{Snippet 3.6: Experiment Implementation}\end{center}
+\begin{center}\textit{Snippet 4.6: Experiment Implementation}\end{center}
 ```{r}
 # Binomial Black-Scholes Algorithm
 BBS <- function(S0,r,q,sigma,m,t) {
@@ -428,17 +428,17 @@ for (m in m_list) {
 ```
 
 
-\textbf{3A.3 Discussion on Accuracy, Path Convergence, and Computational Efficiency}
+\textbf{4A.3 Discussion on Accuracy, Path Convergence, and Computational Efficiency}
 
 \textbf{Accuracy}
 
-In this section we compare accuracy, convergence behavior and computational speed of LSM($k=3,n=64000$), LSM($k=3,n=256000$), and BBSR methods with varying $m$ steps where \(m:\{10,20,40,80\}\). We purposely chose LSM($k=3,n=256000$) to reflect the most precise and method among all LSM runs and include LSM($k=3,n=64000$) to sacrifice some precision for speed. This will provide us with a more meaningful comparison once we include the BBSR method into the picture. We choose the absolute error metric as our basis for evaluating accuracy. 
+We compare accuracy, convergence behavior and computational speed of LSM($k=3,n=64000$), LSM($k=3,n=256000$), and BBSR methods with varying $m$ steps where \(m:\{10,20,40,80\}\). We purposely chose LSM($k=3,n=256000$) to reflect the most precise and method among all LSM runs and include LSM($k=3,n=64000$) to sacrifice some precision for speed. This will provide us with a more meaningful comparison once we include the BBSR method into the picture. We choose the absolute error metric as our basis for evaluating accuracy. 
 
 \textbf{LSM price accuracy evaluation using BSSR price as benchmark}
 
-We now evaluate our LSM model's accuracy using BSSR model as the benchmark. The absolute error values are shown in Table 3.5, where we measure the difference between BSSR prices and LSM prices by varying $m$ steps. Overall, LSM prices are considered to be accurate. For $m \geq 20$, we achieve absolute error values of under 0.01, which is quite remarkable. From our results, we can see that we do not require as much as 256000 stock paths to get an accurate price, as the LSM model with 64000 stock paths are enough to achieve sufficient accuracy.  
+We now evaluate our LSM model's accuracy using BSSR model as the benchmark. The absolute error values are shown in Table 4.5, where we measure the difference between BSSR prices and LSM prices by varying $m$ steps. Overall, LSM prices are considered to be accurate. For $m \geq 20$, we achieve absolute error values of under 0.01, which is quite remarkable. From our results, we can see that we do not require as much as 256000 stock paths to get an accurate price, as the LSM model with 64000 stock paths are enough to achieve sufficient accuracy.  
 
-\begin{center}\textit{Table 3.5: LSM price accuracy with BSSR price as benchmark}\end{center}
+\begin{center}\textit{Table 4.5: LSM price accuracy with BSSR price as benchmark}\end{center}
 ```{r, echo=FALSE}
 
 put_LSM_results_fast = read.csv("put_LSM_cpf_res_20241127.csv", header=TRUE, row.names=1)
@@ -458,9 +458,9 @@ kable(accuracy_df, "latex", booktabs = TRUE) %>%
 \textbf{Compare LSM and BSSR prices with the True Value as benchmark}
 
 
-Here, we include the true value (binomial(n=15000)) in our comparison and use the true value as the benchmark for the BSSR and LSM prices. The results are shown in Table 3.6. We can see that the BBSR method is very accurate and superior to the LSM method at every $m$. At $m=80$, the error of the BSSR value is small and negligible in practice. This is not to say that the LSM algorithm did a poor job, because we can see that the absolute error is of order $10^{-3}$, which is certainly less than a cent. 
+Here, we include the true value (from Binomial(n=15000)) in our comparison and use the true value as the benchmark for the BSSR and LSM prices. The results are shown in Table 4.6. We can see that the BBSR method is very accurate and superior to the LSM method at every $m$. At $m=80$, the error of the BSSR value is small and negligible in practice. This is not to say that the LSM algorithm did a poor job, because we can see that the absolute error is of order $10^{-3}$, which is certainly less than a cent. 
 
-\begin{center}\textit{Table 3.6: Accuracy Comparison with True Value as benchmark}\end{center}
+\begin{center}\textit{Table 4.6: Accuracy Comparison with True Value as benchmark}\end{center}
 ```{r, echo=FALSE}
 V_binom = 2.225874
 put_LSM_results_fast = read.csv("put_LSM_cpf_res_20241127.csv", header=TRUE, row.names=1)
@@ -481,9 +481,9 @@ kable(accuracy_df, "latex", booktabs = TRUE) %>%
 
 \textbf{Convergence Behavior}
 
-Here, we dicuss the convergence behaviors of the algorithms and Figure 3.3 shows the plot each algorithm's convergence path. In terms of converging behavior, the LSM algorithm started off with a relatively low discrepancy compared to the true value and converges more smoothly compared to the BSSR. As comparison, the BSSR algorithm started of with a relatively high discrepancy and descends with a rapid rate and converges to the true value beautifully at around $m=40$. This implies that the LSM algorithm converges with a slower rate than the BSSR and might require more time steps to produce a more accurate result. The result shows that the BSSR is very powerful in that it is able to converge to the true price by using a very low computational setting since it is already accurate for a few time steps (i.e. $m=40$). 
+Here, we discuss the convergence behaviors of the algorithms and Figure 4.3 shows the plot each algorithm's convergence path. In terms of converging behavior, the LSM algorithm started off with a relatively low discrepancy compared to the true value and converges more smoothly compared to the BSSR. As comparison, the BSSR algorithm started of with a relatively high discrepancy and descends with a rapid rate and converges to the true value beautifully at around $m=40$. This implies that the LSM algorithm converges with a slower rate than the BSSR and might require more time steps to produce a more accurate result. The result shows that the BSSR is very powerful in that it is able to converge to the true price by using a very low computational setting since it is already accurate for a few time steps (i.e. $m=40$). 
 
-\begin{center}\textit{Figure 3.3: Options Convergence Path with True Value as benchmark}\end{center}
+\begin{center}\textit{Figure 4.3: Options Convergence Path with True Value as benchmark}\end{center}
 ```{r, echo=FALSE}
 
 m_steps = c(10,20,40,80)
@@ -504,9 +504,9 @@ legend("topright",
 ```
 \textbf{Computational Speed}
 
-Table 3.7 shows the run times and computational speed. Computational speed is calculated as option prices per second by taking the inverse of the run time (sec). In particular, we observed that the computational efficiency results for BSSR method is not linear in that for smaller time steps, it takes longer time to run the algorithm. The increased runtime for smaller time steps (m) in the implementation is likely due to fixed overheads in initializing and updating matrices, which dominate when m is small and the computations are less intensive. Nevertheless, if we compare the speeds and run time, BSSR is fast and efficient. At $m=80$, using the observed speed of 344 prices per second, we can say that it is certainly viable in practice. Compared to LSM ($n=64000$), we can compute only 3 prices per second.  
+Table 4.7 shows the run times and computational speed. Computational speed is calculated as option prices per second by taking the inverse of the run time (sec). In particular, we observed that the computational efficiency results for BSSR method is not linear in that for smaller time steps, it takes longer time to run the algorithm. The increased runtime for smaller time steps (m) in the implementation is likely due to fixed overheads in initializing and updating matrices, which dominate when m is small and the computations are less intensive. Nevertheless, if we compare the speeds and run time, BSSR is fast and efficient. At $m=80$, using the observed speed of 344 prices per second, we can say that it is certainly viable in practice. Compared to LSM ($n=64000$), we can compute only 3 prices per second.  
 
-\begin{center}\textit{Table 3.7: Run Times (seconds/price) and Speed Comparison (prices/sec)}\end{center}
+\begin{center}\textit{Table 4.7: Run Times (seconds/price) and Speed Comparison (prices/sec)}\end{center}
 ```{r,echo=FALSE}
 m_steps = c(10,20,40,80)
 lsm_rt1 = unname(unlist(put_LSM_results_fast[14,][c(3,6,9,12)]))
@@ -521,11 +521,11 @@ kable(runtime_df, "latex", booktabs = TRUE) %>%
 ```
 
 
-\textbf{3A.4 Summing it all up}
+\textbf{4A.4 Accuracy vs Computational Speed}
 
-We conclude that in our specific case, the BSSR is superior to LSM in that it requires very small computational effort to compute a very accurate option price. BBSR wins in both the race for accuracy and speed. Figure 3.4 illustrates the plot that examines the accuracy and speed of each algorithm with varying time step. In the plot, we scale the speed by taking the $log_{10}$ for better representation for comparison. In this plot, the algorithm preference would be at the top left area, which points that lie in that area exhibits relatively high speeds and low errors. Although the plot shows that the accuracy between BSSR and LSM is very close, the computational speed is the winning factor and we conclude that BSSR certainly practical, accurate, and simple to implement. 
+We conclude that in our specific case, the BSSR is superior to LSM in that it requires very small computational effort to compute a very accurate option price. BBSR wins in both the race for accuracy and speed. Figure 3.4 illustrates the plot that examines the absolute error and speed of each algorithm with varying time steps. The absolute error values are computed in comparison again the true value (based on Binomial($n=15000$)). In the plot, we scale the speed by taking the $log_{10}$ for better representation for comparison. In this plot, the preferred model would be at the top left area, and these models would exhibit relatively high speeds and low errors. Although the plot shows that the accuracy between BSSR and LSM is very close and hence the LSM model is very accurate, the computational speed is the winning factor and we conclude that BSSR certainly practical, accurate, and relatively simple to implement. 
 
-\begin{center}\textit{Figure 3.4: Speed vs Abs. Error Plot Comparison}\end{center}
+\begin{center}\textit{Figure 4.4: Speed vs Abs. Error Plot Comparison}\end{center}
 ```{r,echo=FALSE}
 s1=log10(runtime_df[,2])
 s2=log10(runtime_df[,4])
@@ -559,7 +559,7 @@ legend("bottomright", legend = c("m=10","m=20","m=40","m=80"),
 \newpage
 \section*{Appendix}
 
-\textbf{3.1: Non-vectorized version of LSM Algorithm using DataFrames}
+\textbf{4.1: Non-vectorized version of LSM Algorithm using DataFrames}
 ```{r}
 simulate_S_paths0 <- function(S0,r,q,sigma,n,m,delta_t) {
   #Function for simulating discrete-time stock paths of m steps with n paths based on the 
@@ -646,7 +646,7 @@ LSM_put0 <- function(S0,K,r,q,sigma,t,n,m, k_regressors, basis_func) {
 }
 ```
 \newpage
-\textbf{3.2: LSM Results using Laguerre Basis Functions}
+\textbf{4.2: LSM Results using Laguerre Basis Functions}
 ```{r, eval=FALSE, echo=FALSE}
 # main code to iterate LSM for list of m steps, n paths, and k regressors using Laguerre Polynomial Basis Functions
 # output two dataframes: option value and se, early exercise value and % of early exercise paths. 
@@ -726,7 +726,7 @@ kable(put_LSM_results2, "latex", booktabs = TRUE) %>%
   kable_styling(latex_options = c("scale_down","striped", "hold_position"))
 ```
 \newpage
-\textbf{3.3: Code Snippet of Binomial Model with n=15000 time steps}
+\textbf{4.3: Code Snippet of Binomial Model with n=15000 time steps}
 ```{r, eval=FALSE}
 BinomTree <- function(S0,r,q,sigma,m,t) {
   dt = t/m
