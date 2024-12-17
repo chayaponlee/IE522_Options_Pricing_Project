@@ -581,8 +581,7 @@ The second way that computational time was reduced was by storing n standard ran
 These methods of computing the discount factor outside of the loop and storing the standard random normal generated values in vector Z (deterministic for QMC) were utilized in all three models. The antithetic approach and Quasi-Monte-Carlo approach had large improvements in computational time compared to the standard approach as faster convergence to the European put option price was observed. This is largely due to a reduction in variance from the antithetic approach and deterministic sampling from the Quasi-Monte-Carlo approach.
 
 \newpage
-
-\section*{3. Monte Carlo Simulation for pricing Asian Call Option}
+\section{\Large \textbf{3. Monte Carlo Simulation for pricing Asian Call Option}}
 
 \textbf{3.1 Introduction}
 
