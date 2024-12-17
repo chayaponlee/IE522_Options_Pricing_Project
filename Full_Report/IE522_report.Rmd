@@ -312,6 +312,7 @@ alpha <- 0.05
 results_antithetic <- results_table(sample_sizes, alpha)
 write.csv(results_antithetic, file = "ResultsAntithetic.csv", row.names = FALSE)
 ```
+\newpage
 \begin{center}
 \textit{Table 2.4: Antithetic Monte Carlo Simulation Results}
 \end{center}
@@ -404,6 +405,7 @@ results_table <- function(sample_sizes, alpha){
 results_QMC <- results_table(sample_sizes, alpha)
 write.csv(results_QMC, file = "ResultsQMC.csv", row.names = FALSE)
 ```
+\newpage
 \begin{center}
 \textit{Table 2.5: Quasi-Monte-Carlo Simulation Results}
 \end{center}
@@ -761,6 +763,7 @@ suppressWarnings(suppressPackageStartupMessages({
 }))
 
 ```
+\newpage
 \begin{center}
 \textit{Table 3.1: Monte Carlo Simulation Results}
 \end{center}
@@ -1680,6 +1683,7 @@ kable(rt_df, "latex", booktabs = TRUE) %>%
   kable_styling(latex_options = c("scale_down","striped","hold_position"))
 
 ```
+\newpage
 \begin{center}\textit{Figure 4.1: Computational Speed Improvements}\end{center}
 ```{r, echo=FALSE}
 logy1 = log10(y1)
@@ -1713,6 +1717,7 @@ european_put_BSM <- function(S,K,r,q,sigma,t) {
   return(put_price)
 }
 ```
+\newpage
 \begin{center}\textit{Snippet 4.5: Experiment Implementation}\end{center}
 ```{r, eval=FALSE}
 # main code to iterate LSM for list of m steps, n paths, and k regressors using Chebyshev Basis Functions
@@ -1794,6 +1799,7 @@ kable(put_LSM_results, "latex", booktabs = TRUE) %>%
   kable_styling(latex_options = c("scale_down","striped","hold_position"))
 
 ```
+\newpage
 \begin{center}\textit{Table 4.4: Early Exercise Value, Percentage of Early Exercise}\end{center}
 ```{r,echo=FALSE}
 kable(put_LSM_results2, "latex", booktabs = TRUE) %>%
@@ -1823,7 +1829,7 @@ legend("topright",
        lty = rep(1,4))
 
 ```
-
+\newpage
 \section{\Large \textbf{4A. Put Option Pricing via Binomial Black-Scholes with Richardson Extrapolation}}
 
 \textbf{4A.1 Objective}
@@ -1963,6 +1969,7 @@ kable(accuracy_df, "latex", booktabs = TRUE) %>%
 
 Here, we discuss the convergence behaviors of the algorithms and Figure 4.3 shows the plot each algorithm's convergence path. In terms of converging behavior, the LSM algorithm started off with a relatively low discrepancy compared to the true value and converges more smoothly compared to the BSSR. As comparison, the BSSR algorithm started of with a relatively high discrepancy and descends with a rapid rate and converges to the true value beautifully at around $m=40$. This implies that the LSM algorithm converges with a slower rate than the BSSR and might require more time steps to produce a more accurate result. The result shows that the BSSR is very powerful in that it is able to converge to the true price by using a very low computational setting since it is already accurate for a few time steps (i.e. $m=40$). 
 
+\newpage
 \begin{center}\textit{Figure 4.3: Options Convergence Path with True Value as benchmark}\end{center}
 ```{r, echo=FALSE}
 
