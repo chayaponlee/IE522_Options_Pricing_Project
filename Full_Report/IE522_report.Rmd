@@ -2262,7 +2262,7 @@ V_binom = BinomTree(S0,r,q,sigma,m,t)
 
 \newpage
 
-\section{\Large \textbf{5. Conlcusion}}
+\section{\Large \textbf{5. Conclusion}}
 
 This report summarized how Monte Carlo simulation can be applied to pricing three types of options: European vanilla put options, Asian call options, and American vanilla put options. The results showed how to price complex options, especially when a closed formed solution was unavailable. Variance reduction techniques, such as the antithetic approach, the control variate approach, and the quasi-random sequence approach were used to improve the accuracy of the option price and the computational efficiency. In addition, the Longstaff-Schwartz method for American options and the Binomial Black-Scholes with Richardson Extrapolation method were used as benchmarks for early exercise strategies. This report showed how Monte Carlo simulations are able to precisely price complex options and investigated convergence speed and computational efficiency across the different methods.
 
