@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.12.7)  17 DEC 2024 00:52
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.12.7)  17 DEC 2024 00:56
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -836,7 +836,7 @@ Here is how much of TeX's memory you used:
  14 hyphenation exceptions out of 8191
  89i,10n,93p,976b,541s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx10.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi5.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi7.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr17.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr5.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri10.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy7.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtti10.pfb></Users/punlee/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on IE522_report.pdf (58 pages, 573330 bytes).
+Output written on IE522_report.pdf (58 pages, 573276 bytes).
 PDF statistics:
  551 PDF objects out of 1000 (max. 8388607)
  416 compressed objects within 5 object streams
