@@ -276,7 +276,7 @@ Because the antithetic approach involves generating Z1 and then computing the ne
 \]
 The standard error, confidence intervals, and absolute price error are computed as shown in the standard approach, with the correct sample size (n/2) used for the calculation of the antithetic standard error. The results for the antithetic approach are shown below.
 ```{r, eval=FALSE}
-convergence_table <- function(sample_sizes, alpha){
+results_table <- function(sample_sizes, alpha){
   results <- data.frame(matrix(ncol = 9, nrow = 0))
   colnames(results) <- c("Sample Size (n)", "Antithetic Sample Size (n/2)", "Option Price", 
                          "Standard Error", "Lower CI", "Upper CI", 
@@ -294,7 +294,7 @@ sample_sizes <- c(1000, 4000, 16000, 64000, 256000, 1024000)
 alpha <- 0.05
 
 # Generate the table
-results_antithetic <- convergence_table(sample_sizes, alpha)
+results_antithetic <- results_table(sample_sizes, alpha)
 write.csv(results_antithetic, file = "ResultsAntithetic.csv", row.names = FALSE)
 ```
 \begin{center}
@@ -374,7 +374,7 @@ EuropeanPutQMC <- function(n, alpha) {
 sample_sizes <- c(1000, 4000, 16000, 64000, 256000, 1024000)
 alpha <- 0.05
 
-convergence_table <- function(sample_sizes, alpha){
+results_table <- function(sample_sizes, alpha){
   results <- data.frame(matrix(ncol = 8, nrow = 0))
   colnames(results) <- c("Sample Size", "Option Price", "Standard Error", "Lower CI", 
                          "Upper CI", "Exact Put Price", "Absolute Error", "Time (seconds)")
@@ -386,7 +386,7 @@ convergence_table <- function(sample_sizes, alpha){
   return(results)
 }
 
-results_QMC <- convergence_table(sample_sizes, alpha)
+results_QMC <- results_table(sample_sizes, alpha)
 write.csv(results_QMC, file = "ResultsQMC.csv", row.names = FALSE)
 ```
 \begin{center}
