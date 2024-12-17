@@ -3,13 +3,11 @@ title: "Q2_main"
 date: "2024-10-30"
 output:
   pdf_document: default
-  html_document:
-    df_print: paged
 ---
 
-\section*{2. Monte Carlo Simulation for pricing Asian Call Option}
+\section*{3. Monte Carlo Simulation for pricing Asian Call Option}
 
-\textbf{2.1 Introduction}
+\textbf{3.1 Introduction}
 
 An Asian option is a type of exotic option where the payoff depends on the average price of the underlying asset over a certain period, rather than its price at a specific point in time. This average can be computed as either an arithmetic average or a geometric average. Asian options are particularly useful in markets where the underlying asset's price is highly volatile, as they reduce the impact of price manipulation or extreme price movements near expiration. For an Asian call or put option, the payoff formulas are listed as follows.
 
@@ -51,7 +49,7 @@ In the following section, we will focus on three parts. The first is pricing an 
 Then, we will investigate how to enhance the efficiency of the Monte Carlo method by implementing variance reduction techniques: the Control Variate Method. Additionally, we will further explore variance reduction methods, such as combining control variates with stratified sampling and the brownian bridge.
 
 
-\textbf{2.2 Asian Option Pricing-- Monte Carlo Method}
+\textbf{3.2 Asian Option Pricing-- Monte Carlo Method}
 
 Monte Carlo (MC) simulation is a widely used numerical method for pricing financial derivatives. The MC method involves generating a large number of simulated paths for the underlying asset price and computing the average payoff over these paths to estimate the option price. Its flexibility makes it suitable for pricing Asian options, as it can handle the arithmetic averaging of the underlying prices, which does not have a closed-form solution.
 
@@ -185,11 +183,17 @@ suppressWarnings(suppressPackageStartupMessages({
   library(knitr)
   library(dplyr)
 }))
-# Display results in a table
-kable(standard_mc_results, caption = "Monte Carlo Simulation Results")
 
 ```
-```{r}
+\begin{center}
+\textit{Table 3.1: Monte Carlo Simulation Results}
+\end{center}
+```{r, echo=FALSE}
+# Plot the table
+kable(standard_mc_results)
+```
+
+```{r, echo=TRUE}
 
 # Plot the convergence of Option Price
 ggplot(standard_mc_results, aes(x = Sample_Size, y = Option_Price)) +
@@ -198,13 +202,21 @@ ggplot(standard_mc_results, aes(x = Sample_Size, y = Option_Price)) +
   geom_ribbon(aes(ymin = CI_Lower, ymax = CI_Upper), fill = "grey80", alpha = 0.5) +
   scale_x_log10() +
   labs(
-    title = "Convergence of Option Price as Sample Size Increases",
+    title = "Figure 3.1: Convergence of Option Price as Sample Size Increases",
     x = "Sample Size (log scale)",
     y = "Option Price"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title = element_text(
+      size = 10,
+      hjust = 0.5,
+      vjust = 1.2
+    )
+  )
 ```
-```{r}
+
+```{r, echo=TRUE}
 
 # Plot the convergence of Standard Error on log-log scale
 ggplot(standard_mc_results, aes(x = Sample_Size, y = Standard_Error)) +
@@ -213,11 +225,18 @@ ggplot(standard_mc_results, aes(x = Sample_Size, y = Standard_Error)) +
   scale_x_log10() +
   scale_y_log10() +
   labs(
-    title = "Convergence of Standard Error (log-log scale)",
+    title = "Figure 3.2: Convergence of Standard Error (log-log scale)",
     x = "Sample Size (log scale)",
     y = "Standard Error (log scale)"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title = element_text(
+      size = 10,
+      hjust = 0.5,
+      vjust = 1.2
+    )
+  )
 
 ```
 
@@ -235,7 +254,7 @@ The second plot, presented on a log-log scale, demonstrates the relationship bet
 This means that as the sample size increases by a factor of 4, the standard error decreases approximately by half. The straight line in the log-log plot shows that doubling the sample size results in a consistent proportional reduction in the standard error, making it predictable and reliable. For example: at \( N = 1000 \), the standard error is 0.26869. At \( N = 4000 \) (4 times \( N = 1000 \)), the standard error decreases to approximately 0.14233. Similarly, at \( N = 16,000 \) (another 4x increase), the standard error further decreases to 0.06805.
 
 
-\textbf{2.3 Variance Reduction Techniques-- Control Variate Method}
+\textbf{3.3 Variance Reduction Techniques-- Control Variate Method}
 
 In this section, we will introduce a variance reduction technique: control variate method. Suppose we want to estimate the expected value \( \theta = \mathbb{E}[Y] \), where \( Y = g(X) \) is a function of some random variable \( X \). If we can find another random variable \( Z \), for which the expected value \( \mathbb{E}[Z] \) is known, we can construct alternative estimators for \( \theta \). For example,
 
@@ -416,11 +435,13 @@ for (N in sample_sizes) {
     Computation_Time_sec = res_cv$Computation_Time_sec
   ))
 }
-
+```
+\begin{center}
+\textit{Table 3.2: Monte Carlo with Control Variate Simulation Results}
+\end{center}
+```{r, echo=FALSE}
 # Display the final results using kable
-kable(results_cv, caption = "Monte Carlo with Control Variate Simulation Results")
-
-
+kable(results_cv)
 ```
 
 ```{r}
@@ -428,7 +449,9 @@ kable(results_cv, caption = "Monte Carlo with Control Variate Simulation Results
 standard_mc_results$Method <- "Standard Monte Carlo"
 results_cv$Method <- "Control Variate"
 comparison_results <- rbind(standard_mc_results, results_cv)
+```
 
+```{r, echo=TRUE}
 # Plot Option Price Convergence with 95% CI
 ggplot(comparison_results, aes(x = Sample_Size, y = Option_Price, color = Method, group = Method)) +
   geom_line() +
@@ -440,15 +463,23 @@ ggplot(comparison_results, aes(x = Sample_Size, y = Option_Price, color = Method
   ) +
   scale_x_log10() +
   labs(
-    title = "Option Price Convergence with 95% CI: Standard MC vs Control Variate",
+    title = "Figure 3.3: Option Price Convergence with 95% CI: Standard MC vs Control Variate",
     x = "Sample Size (log scale)",
     y = "Option Price",
     color = "Method",
     fill = "Method"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      hjust = 0.5,
+      vjust = 1.2
+    )
+  )
 ```
-```{r}
+
+```{r, echo=TRUE}
 # Plot Standard Error Convergence
 ggplot(comparison_results, aes(x = Sample_Size, y = Standard_Error, color = Method, group = Method)) +
   geom_line() +
@@ -456,31 +487,45 @@ ggplot(comparison_results, aes(x = Sample_Size, y = Standard_Error, color = Meth
   scale_x_log10() +
   scale_y_log10() +
   labs(
-    title = "Standard Error Convergence: Standard MC vs Control Variate",
+    title = "Figure 3.4: Standard Error Convergence: Standard MC vs Control Variate",
     x = "Sample Size (log scale)",
     y = "Standard Error (log-log scale)",
     color = "Method"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      hjust = 0.5,
+      vjust = 1.2
+    )
+  )
 
 ```
 
-```{r}
+```{r, echo=TRUE}
 # Plot Computation Time Comparison
 ggplot(comparison_results, aes(x = Sample_Size, y = Computation_Time_sec, color = Method, group = Method)) +
   geom_line() +
   geom_point(size = 3) +
   scale_x_log10() +
   labs(
-    title = "Computation Time: Standard MC vs Control Variate",
+    title = "Figure 3.5: Computation Time: Standard MC vs Control Variate",
     x = "Sample Size (log scale)",
     y = "Computation Time (seconds)",
     color = "Method"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      hjust = 0.5,
+      vjust = 1.2
+    )
+  )
 ```
 
-\textbf{2.4 Analysis of Results: Comparing Standard Monte Carlo (MC) and Control Variate (CV)}
+\textbf{3.4 Analysis of Results: Comparing Standard Monte Carlo (MC) and Control Variate (CV)}
 
 The comparison of the Standard Monte Carlo method and the Control Variate method reveals clear advantages of the latter in terms of convergence rate, variance reduction, and overall efficiency.
 
@@ -509,7 +554,7 @@ The third plot compares the computation times for the two methods. As expected, 
 Despite this minor overhead, the significant reduction in variance achieved by the CV method more than compensates for the slightly higher computation cost. This trade-off makes the CV technique highly effective in scenarios where variance reduction is a priority.
 
 
-\textbf{2.5 Further Discussion on Variance Reduction Techniques}
+\textbf{3.5 Further Discussion on Variance Reduction Techniques}
 
 In addition to the control variate method, variance reduction can be further enhanced by combining it with other techniques such as stratified sampling and the Brownian bridge construction. These methods introduce additional refinements to the Monte Carlo simulation process, addressing specific sources of randomness and variability in the simulation.
 
@@ -532,7 +577,7 @@ The Brownian bridge construction is an effective technique for variance reductio
 Despite its advantages, the implementation of the Brownian bridge introduces added complexity. Interpolation of intermediate points and adjustments to the simulation framework require careful execution. Additionally, the variance reduction achieved depends on the characteristics of the option and the underlying asset paths, and in some cases, the benefits may be marginal relative to the additional implementation effort.
 
 
-\textbf{2.6 Variance Reduction Techniques-- Moment Matching}
+\textbf{3.6 Variance Reduction Techniques-- Moment Matching}
 
 The Moment Matching (MM) method is a variance reduction technique used to improve the convergence and accuracy of Monte Carlo simulations. By adjusting the random samples to match the theoretical properties of the underlying distribution, MM ensures that the simulated paths conform more closely to the model assumptions.
 
@@ -746,9 +791,13 @@ for (N in sample_sizes) {
     Computation_Time_sec = result$Computation_Time_sec
   ))
 }
-
+```
+\begin{center}
+\textit{Table 3.3: Moment Matching Simulation Results}
+\end{center}
+```{r, echo=FALSE}
 # Display the results as a table
-knitr::kable(moment_matching_results, caption = "Moment Matching Simulation Results")
+knitr::kable(moment_matching_results)
 ```
 
 The above code tests the performance of the moment matching method by evaluating the option price under different sample sizes \(N\). The `price_asian_call_MM` function simulates the stock price paths based on the Geometric Brownian Motion model using moment matching to adjust the random samples. Specifically, the simulation begins with generating a matrix of standard normal random variables \(Z\), with dimensions \(N \times m\), where \(N\) is the number of paths and \(m\) is the number of time steps. Moment matching ensures the random samples have a mean of zero and variance of one to align with the standard normal distribution. These adjusted samples are then used to simulate the asset prices \(S_t\) at each time step. The arithmetic average of the asset prices for each path is computed, and the option payoff is calculated as \( \max(\bar{S} - K, 0) \), where \( \bar{S} \) is the average price and \(K\) is the strike price. The payoff is then discounted to the present value using \( e^{-rT} \), where \(r\) is the risk-free interest rate and \(T\) is the time to maturity. The function outputs the average option price, standard error, 95% confidence interval, and computation time.
@@ -758,6 +807,7 @@ The results in the table demonstrate the convergence of the Monte Carlo simulati
 The computation time also increases with the sample size, from 0.008 seconds for \(N = 1000\) to 2.416 seconds for \(N = 256000\). This behavior is expected since larger sample sizes require more calculations. The results indicate that the moment matching method provides stable and accurate estimates of the Asian call option price. As the sample size increases, the standard error decreases approximately at the rate of \( O(1/\sqrt{N}) \), which is consistent with the theoretical behavior of the Monte Carlo method. The final estimate stabilizes around 4.78, suggesting good convergence of the simulation. Overall, the moment matching approach effectively improves the reliability of the Monte Carlo method by reducing sampling variability and enhancing the precision of the results.
 
 To visualize the convergence of the option price as the sample size increases, we plot the option price estimates along with their 95% confidence intervals.
+
 
 ```{r option_price_convergence, echo=TRUE, message=FALSE, warning=FALSE}
 library(ggplot2)
@@ -769,11 +819,18 @@ ggplot(moment_matching_results, aes(x = Sample_Size, y = Option_Price)) +
   geom_ribbon(aes(ymin = CI_Lower, ymax = CI_Upper), fill = "grey80", alpha = 0.5) +
   scale_x_log10() +
   labs(
-    title = "Convergence of Option Price with Increasing Sample Size",
+    title = "Figure 3.6: Convergence of Option Price with Increasing Sample Size",
     x = "Sample Size (log scale)",
     y = "Option Price"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title = element_text(
+      size = 10,
+      hjust = 0.5,
+      vjust = 1.2
+    )
+  )
 ```
 
 The plot illustrates the convergence of the Asian call option price as the sample size increases. At smaller sample sizes (e.g., \( N = 1000 \)), the option price estimate shows noticeable variability, with a wider confidence interval. This reflects higher uncertainty due to insufficient paths in the Monte Carlo simulation. As the sample size increases to \( N = 16000 \) and beyond, the option price stabilizes around 4.78, and the confidence interval narrows significantly. This behavior is consistent with the theoretical property of Monte Carlo methods, where the standard error decreases at a rate of \( O(1/\sqrt{N}) \). The convergence of the option price and the reduction in uncertainty demonstrate the effectiveness of the moment matching method in improving the reliability of the simulation results.
@@ -788,11 +845,18 @@ ggplot(moment_matching_results, aes(x = Sample_Size, y = Standard_Error)) +
   scale_x_log10() +
   scale_y_log10() +
   labs(
-    title = "Convergence of Standard Error with Increasing Sample Size",
+    title = "Figure 3.7: Convergence of Standard Error with Increasing Sample Size",
     x = "Sample Size (log scale)",
     y = "Standard Error (log scale)"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title = element_text(
+      size = 10,
+      hjust = 0.5,
+      vjust = 1.2
+    )
+  )
 ```
 
 The plot shows the convergence of the standard error as the sample size increases, presented on a log-log scale. As expected, the standard error decreases approximately linearly with the logarithm of the sample size, confirming the theoretical rate of convergence for Monte Carlo simulations. Specifically, the standard error follows the relationship:
@@ -807,6 +871,7 @@ At smaller sample sizes (e.g., \( N = 1000 \)), the standard error is relatively
 
 To analyze the computational cost, we plot the computation time against the sample size to observe how the time scales with increasing sample size.
 
+
 ```{r computation_time_convergence, echo=TRUE, message=FALSE, warning=FALSE}
 # Plot Computation Time vs Sample Size
 ggplot(moment_matching_results, aes(x = Sample_Size, y = Computation_Time_sec)) +
@@ -814,11 +879,18 @@ ggplot(moment_matching_results, aes(x = Sample_Size, y = Computation_Time_sec)) 
   geom_point(size = 3, color = "darkgreen") +
   scale_x_log10() +
   labs(
-    title = "Computation Time with Increasing Sample Size",
+    title = "Figure 3.8: Computation Time with Increasing Sample Size",
     x = "Sample Size (log scale)",
     y = "Computation Time (seconds)"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title = element_text(
+      size = 10,
+      hjust = 0.5,
+      vjust = 1.2
+    )
+  )
 ```
 
 The plot shows the computation time as a function of the sample size on a log scale. As expected, the computation time increases with the sample size. For small sample sizes, such as \( N = 1000 \), the computation time is negligible, close to 0.008 seconds. As the sample size increases to \( N = 16000 \), the computation time begins to rise gradually, reaching 0.122 seconds. For larger sample sizes, the computation time increases more significantly, reaching approximately 2.4 seconds for \( N = 256000 \). This behavior reflects the linear scaling of computation time with the sample size, as each additional path requires extra calculations for the asset price simulation and payoff evaluation.
