@@ -348,7 +348,7 @@ legend("topright",
 
 \textbf{4A.1 Objective}
 
-In this section, we implement the Binomial Black-Scholes with Richardson Extrapolation (BBSR) to compute the put option value. This allows us to compare the accuracy of the put value between using BBSR and LSM. As suggested in the paper "Broadie and Detemple, 1996, American Option Valuation: New Bounds, Approximations, and a Comparison of Existing Methods", we will also define our benchmark for the put option value using a standard Binomial Tree pricer with $m=15000$ time steps. Through this section, we refer to this benchmark as the "True Value". We will also compare computational speeds and convergence behavior with respect to the true put option value.
+In this section, we implement the Binomial Black-Scholes with Richardson Extrapolation (BBSR) to compute the put option value. This allows us to compare the accuracy of the put value between using BBSR and LSM. As suggested in the paper "Broadie and Detemple, 1996, American Option Valuation: New Bounds, Approximations, and a Comparison of Existing Methods", we will also define our benchmark for the put option value using a standard Binomial Tree pricer with $m=15000$ time steps. Through this section, we refer to this benchmark as the "true value". We will also compare computational speeds and convergence behavior with respect to the true put option value.
 
 \textbf{4A.2 BBSR Implementation}
 
